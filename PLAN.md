@@ -195,47 +195,62 @@ dependencies {
 
 ## Milestones
 
-### M1 — Skeleton (Week 1)
-- [ ] Android Studio project with Compose + Hilt
-- [ ] All data models with kotlinx.serialization
-- [ ] RoundStore + CourseStore (JSON file I/O)
-- [ ] DistanceEngine (haversine)
-- [ ] Bottom navigation: Scorecards / Round / Map / Settings (empty screens)
+### M1 — Skeleton (Week 1) ✅
+- [x] Android Studio project with Compose + Hilt
+- [x] All data models with kotlinx.serialization
+- [x] RoundStore + CourseStore (JSON file I/O)
+- [x] DistanceEngine (haversine — built into GpsPoint)
+- [x] Bottom navigation: Scorecards / Round / Map / Settings (empty screens)
+- [x] App icon generated from iOS source into all mipmap densities
+- [x] Material 3 theme with golf green palette
 
-### M2 — Round Flow (Week 2-3)
-- [ ] LocationService wrapper
-- [ ] OverpassClient + GolfCourseAPIClient
-- [ ] StartRoundScreen (search, course list, starting hole)
-- [ ] CourseDownloadService
-- [ ] ActiveRoundScreen (hole info, mark shot, club picker, putts, prev/next)
-- [ ] RoundSession state machine
-- [ ] AppState (round lifecycle, auto-save)
+### M2 — Round Flow (Week 2-3) ✅
+- [x] LocationService wrapper (FusedLocationProviderClient)
+- [x] OverpassClient + GolfCourseAPIClient
+- [x] StartRoundScreen (search, course list, starting hole)
+- [x] ActiveRoundScreen (hole info, mark shot, club picker, putts, prev/next)
+- [x] DistanceDisplay (Front/Flag/Back columns, static yardage fallback)
+- [x] MiniScorecard (vertical list with stroke circles, auto-scroll)
+- [x] RoundSession state machine
+- [x] AppState (round lifecycle)
+- [x] Resume round flow (InProgressStore, resume prompt on launch)
+- [x] Auto-save every 30s (InProgressStore)
+- [x] Crash recovery (InProgressStore persist/restore)
+- [x] Idle detection prompt (30-minute timeout)
 
-### M3 — Map (Week 3-4)
-- [ ] MapLibre composable wrapper
-- [ ] Hole geometry rendering (fairway, bunkers, water)
-- [ ] Shot dots + distance lines during round
-- [ ] Player location + distance to green display
-- [ ] Front/Flag/Back distance panel
+### M3 — Map (Week 3-4) ✅
+- [x] MapLibre composable wrapper (OSM raster tiles)
+- [x] Hole geometry rendering (fairway, bunkers, water, rough via GeoJSON)
+- [x] Shot dots + distance lines during round (color-coded by club)
+- [x] Player location blue dot with pulse animation
+- [x] Flag dot + player-to-green distance line
+- [x] Tee-to-green camera rotation (bearing calculation)
+- [x] Camera offset for hole info bar
+- [x] Tap-to-measure (player→tap + tap→green distances)
+- [x] Explore mode (course picker → map view without active round)
+- [x] Hole navigation (prev/next) with info bar
+- [x] Shared AppState between Round and Map tabs
 
-### M4 — Scorecards (Week 4)
-- [ ] Scorecards list screen
-- [ ] Scorecard detail (front 9, back 9, totals, stats)
+### M4 — Scorecards (Week 4) ✅
+- [x] Scorecards list screen (round rows with score, date, course name)
+- [x] Scorecard detail (front 9, back 9, totals, stats)
+- [x] Color-coded scores (eagle/birdie/par/bogey/double+)
+- [x] Swipe-to-delete rounds
 - [ ] Shot map per hole
-- [ ] Swipe-to-delete rounds
 
-### M5 — Settings & Polish (Week 5)
-- [ ] Settings screen (tee color picker)
-- [ ] Club bag manager
-- [ ] Course manager (search, download, delete)
-- [ ] Resume round flow
-- [ ] Crash recovery (InProgressStore)
-- [ ] Idle detection prompt
+### M5 — Settings & Polish (Week 5) ✅
+- [x] Settings screen (tee color picker)
+- [x] Club bag manager (toggle clubs, persist to SharedPreferences)
+- [x] Course manager (search, download, delete with swipe)
+- [x] Tip jar (Venmo link)
+- [x] About section (version, GitHub, attribution)
 - [ ] Orientation lock during round
 
 ### M6 — Release Prep (Week 6)
+- [x] GitHub Actions CI workflow (android.yml)
 - [ ] UI polish, Material 3 theming
 - [ ] Edge cases, error handling
+- [ ] ProGuard / R8 configuration
 - [ ] Play Store listing, screenshots
 - [ ] Internal testing track
 
