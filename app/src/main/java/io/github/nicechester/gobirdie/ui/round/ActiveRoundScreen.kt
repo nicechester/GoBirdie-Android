@@ -1,0 +1,426 @@
+package io.github.nicechester.gobirdie.ui.round
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.github.nicechester.gobirdie.core.data.session.RoundSession
+import io.github.nicechester.gobirdie.core.model.ClubType
+import io.github.nicechester.gobirdie.core.model.Course
+import io.github.nicechester.gobirdie.core.model.GpsPoint
+import io.github.nicechester.gobirdie.core.model.Hole
+import io.github.nicechester.gobirdie.core.model.HoleScore
+
+private val GolfGreen = Color(0xFF2E7D32)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActiveRoundScreen(
+    session: RoundSession,
+    course: Course,
+    playerLocation: GpsPoint?,
+    onEndRound: () -> Unit,
+    onCancelRound: () -> Unit,
+) {
+    val round by session.round.collectAsState()
+    val holeIndex by session.currentHoleIndex.collectAsState()
+    val hole = round.holes.getOrNull(holeIndex)
+    val courseHole = course.holes.firstOrNull { it.number == (hole?.number ?: 0) }
+    val isLast = holeIndex == round.holes.size - 1
+
+    var showClubPicker by remember { mutableStateOf(false) }
+    var showEndConfirm by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+
+    Column(Modifier.fillMaxSize()) {
+        // Header
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                "Hole ${hole?.number ?: ""}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.width(8.dp))
+            val info = buildString {
+                append("Par ${hole?.par ?: ""}")
+                courseHole?.yardage?.let { append("  ·  $it yds") }
+            }
+            Text(info, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.weight(1f))
+
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, "Menu")
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("End Round") },
+                        onClick = { showMenu = false; showEndConfirm = true },
+                        leadingIcon = { Icon(Icons.Default.Flag, null) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Cancel Round", color = MaterialTheme.colorScheme.error) },
+                        onClick = { showMenu = false; onCancelRound() },
+                        leadingIcon = { Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.error) },
+                    )
+                }
+            }
+        }
+
+        // Distance display — Front | Flag | Back
+        DistanceDisplay(
+            playerLocation = playerLocation,
+            courseHole = courseHole,
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+
+        // Hole controls
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+            // Row 1: Mark Shot + Penalty + Undo
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { showClubPicker = true },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = GolfGreen),
+                ) {
+                    Icon(Icons.Default.LocationOn, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Mark Shot")
+                }
+                FilledTonalButton(onClick = { session.addPenalty() }, Modifier.width(64.dp).height(48.dp)) {
+                    Text("⚠", fontSize = 20.sp)
+                }
+                FilledTonalButton(
+                    onClick = { session.undoLastAction() },
+                    modifier = Modifier.width(64.dp).height(48.dp),
+                    enabled = (hole?.strokes ?: 0) > 0,
+                ) {
+                    Icon(Icons.Default.Refresh, "Undo", Modifier.size(22.dp))
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Row 2: Putts stepper
+            Surface(Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, tonalElevation = 1.dp) {
+                Row(
+                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Putts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.weight(1f))
+                    IconButton(
+                        onClick = { session.setPutts((hole?.putts ?: 0) - 1) },
+                        enabled = (hole?.putts ?: 0) > 0,
+                    ) {
+                        Icon(Icons.Default.RemoveCircle, "Minus", tint = if ((hole?.putts ?: 0) > 0) GolfGreen else Color.Gray)
+                    }
+                    Text("${hole?.putts ?: 0}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = { session.setPutts((hole?.putts ?: 0) + 1) }) {
+                        Icon(Icons.Default.AddCircle, "Plus", tint = GolfGreen)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // Row 3: Prev / Next
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(
+                    onClick = { session.navigateTo(session.currentHoleNumber - 1) },
+                    modifier = Modifier.weight(1f),
+                    enabled = holeIndex > 0,
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Prev")
+                }
+                Button(
+                    onClick = { if (isLast) onEndRound() else session.navigateTo(session.currentHoleNumber + 1) },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isLast) Color(0xFFE65100) else MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = if (isLast) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
+                ) {
+                    Text(if (isLast) "Finish" else "Next")
+                    Spacer(Modifier.width(4.dp))
+                    Icon(if (isLast) Icons.Default.Flag else Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
+                }
+            }
+        }
+
+        // Mini scorecard
+        MiniScorecard(
+            holes = round.holes,
+            currentHoleNumber = hole?.number ?: 1,
+            totalStrokes = round.totalStrokes,
+            onHoleSelect = { session.navigateTo(it) },
+            modifier = Modifier.weight(1f).padding(top = 4.dp),
+        )
+    }
+
+    // Club picker
+    if (showClubPicker) {
+        ClubPickerSheet(
+            onSelect = { club ->
+                val loc = playerLocation ?: GpsPoint(0.0, 0.0)
+                val distToPin = courseHole?.greenCenter?.let { playerLocation?.distanceYards(it) }
+                session.markShot(loc, club, distanceToPinYards = distToPin)
+                showClubPicker = false
+            },
+            onSkip = {
+                val loc = playerLocation ?: GpsPoint(0.0, 0.0)
+                session.markShot(loc)
+                showClubPicker = false
+            },
+            onDismiss = { showClubPicker = false },
+        )
+    }
+
+    // End round confirmation
+    if (showEndConfirm) {
+        AlertDialog(
+            onDismissRequest = { showEndConfirm = false },
+            title = { Text("End Round?") },
+            text = { Text("Save and finish this round?") },
+            confirmButton = {
+                TextButton(onClick = { showEndConfirm = false; onEndRound() }) {
+                    Text("End", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndConfirm = false }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+// ─── Distance Display ───────────────────────────────────────────────
+
+@Composable
+private fun DistanceDisplay(
+    playerLocation: GpsPoint?,
+    courseHole: Hole?,
+    modifier: Modifier = Modifier,
+) {
+    val hasGps = playerLocation != null && courseHole?.greenCenter != null
+    val front = if (hasGps) courseHole?.greenFront?.let { playerLocation!!.distanceYards(it) } else null
+    val flag = if (hasGps) courseHole?.greenCenter?.let { playerLocation!!.distanceYards(it) } else null
+    val back = if (hasGps) courseHole?.greenBack?.let { playerLocation!!.distanceYards(it) } else null
+
+    Surface(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, tonalElevation = 1.dp) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            // Front
+            DistanceCol(label = "Front", value = front?.toString() ?: "—", isPrimary = false)
+            // Flag
+            DistanceCol(
+                label = "Flag",
+                value = flag?.toString() ?: courseHole?.yardage ?: "—",
+                isPrimary = true,
+            )
+            // Back
+            DistanceCol(label = "Back", value = back?.toString() ?: "—", isPrimary = false)
+        }
+    }
+}
+
+@Composable
+private fun DistanceCol(label: String, value: String, isPrimary: Boolean) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            value,
+            fontSize = if (isPrimary) 48.sp else 32.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isPrimary) GolfGreen else MaterialTheme.colorScheme.onSurface,
+        )
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+// ─── Mini Scorecard ─────────────────────────────────────────────────
+
+@Composable
+private fun MiniScorecard(
+    holes: List<HoleScore>,
+    currentHoleNumber: Int,
+    totalStrokes: Int,
+    onHoleSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(currentHoleNumber) {
+        val idx = (currentHoleNumber - 1).coerceAtLeast(0)
+        listState.animateScrollToItem(idx)
+    }
+
+    Column(modifier) {
+        HorizontalDivider()
+
+        // Header
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(
+                "SCORECARD",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                letterSpacing = 1.5.sp,
+            )
+            Spacer(Modifier.weight(1f))
+            if (totalStrokes > 0) {
+                val playedPar = holes.filter { it.strokes > 0 }.sumOf { it.par }
+                val diff = totalStrokes - playedPar
+                val parStr = when { diff > 0 -> "+$diff"; diff == 0 -> "E"; else -> "$diff" }
+                Text(
+                    "$totalStrokes ($parStr)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = when { diff < 0 -> GolfGreen; diff == 0 -> MaterialTheme.colorScheme.onSurface; else -> Color.Red },
+                )
+            }
+        }
+
+        // Hole rows
+        LazyColumn(state = listState) {
+            items(holes, key = { it.number }) { h ->
+                ScorecardRow(
+                    hole = h,
+                    isCurrent = h.number == currentHoleNumber,
+                    onTap = { onHoleSelect(h.number) },
+                )
+                HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScorecardRow(hole: HoleScore, isCurrent: Boolean, onTap: () -> Unit) {
+    val overPar = hole.strokes - hole.par
+    val scoreLabel = when {
+        hole.strokes == 0 -> "—"
+        overPar == 0 -> "E"
+        overPar > 0 -> "+$overPar"
+        else -> "$overPar"
+    }
+    val scoreLabelColor = when {
+        hole.strokes == 0 -> MaterialTheme.colorScheme.onSurfaceVariant
+        overPar < 0 -> GolfGreen
+        overPar == 0 -> MaterialTheme.colorScheme.onSurface
+        else -> Color.Red
+    }
+
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onTap)
+            .background(if (isCurrent) GolfGreen.copy(alpha = 0.08f) else Color.Transparent)
+            .padding(horizontal = 16.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // H#
+        Text(
+            "H${hole.number}",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isCurrent) GolfGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(28.dp),
+        )
+        // P#
+        Text(
+            "P${hole.par}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(24.dp),
+        )
+        // Stroke circles
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            val totalSlots = maxOf(hole.par, hole.strokes)
+            for (n in 1..totalSlots) {
+                if (n <= hole.strokes) {
+                    // Played stroke circle
+                    val bg = if (n > hole.par) Color.Red else GolfGreen
+                    Box(
+                        Modifier.size(18.dp).clip(CircleShape).background(bg),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("$n", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+                } else {
+                    // Empty slot
+                    Box(
+                        Modifier.size(18.dp).clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    )
+                }
+            }
+        }
+        // Score vs par
+        Text(
+            scoreLabel,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = scoreLabelColor,
+            textAlign = TextAlign.End,
+            modifier = Modifier.width(28.dp),
+        )
+    }
+}
+
+// ─── Club Picker ────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ClubPickerSheet(
+    onSelect: (ClubType) -> Unit,
+    onSkip: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState()
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Select Club", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = onSkip) { Text("Skip") }
+        }
+        LazyColumn(Modifier.padding(horizontal = 16.dp).heightIn(max = 400.dp)) {
+            items(ClubType.defaultBag) { club ->
+                Surface(
+                    Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable { onSelect(club) },
+                    shape = MaterialTheme.shapes.small,
+                ) {
+                    Text(club.displayName, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+        Spacer(Modifier.height(32.dp))
+    }
+}

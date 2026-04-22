@@ -1,0 +1,19 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+/app/build
+/core/model/build
+/core/data/build
+
+# Kotlin
+.kotlin/
+
+# Secrets
+secrets.properties
+app/src/main/java/**/Config.kt
