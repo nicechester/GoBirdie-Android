@@ -1,23 +1,38 @@
 package io.github.nicechester.gobirdie
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.nicechester.gobirdie.core.data.CourseStore
+import io.github.nicechester.gobirdie.core.data.InProgressSnapshot
+import io.github.nicechester.gobirdie.core.data.InProgressStore
 import io.github.nicechester.gobirdie.core.data.RoundStore
 import io.github.nicechester.gobirdie.core.data.location.LocationService
 import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
+
+private const val TAG = "AppState"
+private const val AUTO_SAVE_INTERVAL_MS = 30_000L
+private const val IDLE_TIMEOUT_MS = 30 * 60 * 1000L // 30 minutes
 
 @HiltViewModel
 class AppState @Inject constructor(
     @ApplicationContext context: Context,
     private val roundStore: RoundStore,
+    private val courseStore: CourseStore,
+    private val inProgressStore: InProgressStore,
 ) : ViewModel() {
 
     val locationService = LocationService(context)
@@ -27,6 +42,19 @@ class AppState @Inject constructor(
 
     private val _activeCourse = MutableStateFlow<Course?>(null)
     val activeCourse: StateFlow<Course?> = _activeCourse
+
+    private val _pendingResume = MutableStateFlow<InProgressSnapshot?>(null)
+    val pendingResume: StateFlow<InProgressSnapshot?> = _pendingResume
+
+    private val _showIdlePrompt = MutableStateFlow(false)
+    val showIdlePrompt: StateFlow<Boolean> = _showIdlePrompt
+
+    private var autoSaveJob: Job? = null
+    private var idleJob: Job? = null
+
+    init {
+        checkForInProgressRound()
+    }
 
     fun startRound(course: Course, startingHole: Int = 1): RoundSession {
         val holeScores = course.holes.map { h ->
@@ -44,6 +72,8 @@ class AppState @Inject constructor(
         _activeSession.value = session
         _activeCourse.value = course
         locationService.start()
+        startAutoSave()
+        resetIdleTimer()
         return session
     }
 
@@ -51,12 +81,92 @@ class AppState @Inject constructor(
         val session = _activeSession.value ?: return
         session.endRound()
         roundStore.save(session.snapshot())
-        locationService.stop()
-        _activeSession.value = null
-        _activeCourse.value = null
+        Log.i(TAG, "Round saved: ${session.snapshot().id}")
+        cleanup()
     }
 
     fun cancelActiveRound() {
+        cleanup()
+    }
+
+    // Called on any user interaction during a round
+    fun resetIdleTimer() {
+        _showIdlePrompt.value = false
+        idleJob?.cancel()
+        if (_activeSession.value == null) return
+        idleJob = viewModelScope.launch {
+            delay(IDLE_TIMEOUT_MS)
+            _showIdlePrompt.value = true
+        }
+    }
+
+    fun dismissIdlePrompt() {
+        resetIdleTimer()
+    }
+
+    // Resume
+
+    private fun checkForInProgressRound() {
+        val snapshot = inProgressStore.load()
+        if (snapshot != null) {
+            Log.i(TAG, "Found in-progress round: ${snapshot.round.courseName}")
+            _pendingResume.value = snapshot
+        }
+    }
+
+    fun resumeRound() {
+        val snapshot = _pendingResume.value ?: return
+        val course = courseStore.load(snapshot.courseId)
+        if (course == null) {
+            Log.w(TAG, "Cannot resume — course ${snapshot.courseId} not found")
+            discardInProgressRound()
+            return
+        }
+        val session = RoundSession(snapshot.round, startingHoleIndex = snapshot.currentHoleIndex)
+        _activeSession.value = session
+        _activeCourse.value = course
+        _pendingResume.value = null
+        locationService.start()
+        startAutoSave()
+        resetIdleTimer()
+        Log.i(TAG, "Resumed round on hole ${snapshot.currentHoleIndex + 1}")
+    }
+
+    fun discardInProgressRound() {
+        inProgressStore.clear()
+        _pendingResume.value = null
+    }
+
+    // Auto-save
+
+    private fun saveInProgress() {
+        val session = _activeSession.value ?: return
+        val course = _activeCourse.value ?: return
+        val snapshot = InProgressSnapshot(
+            round = session.snapshot(),
+            courseId = course.id,
+            currentHoleIndex = session.currentHoleIndex.value,
+        )
+        inProgressStore.save(snapshot)
+    }
+
+    private fun startAutoSave() {
+        autoSaveJob?.cancel()
+        autoSaveJob = viewModelScope.launch {
+            while (isActive) {
+                delay(AUTO_SAVE_INTERVAL_MS)
+                saveInProgress()
+            }
+        }
+    }
+
+    private fun cleanup() {
+        autoSaveJob?.cancel()
+        autoSaveJob = null
+        idleJob?.cancel()
+        idleJob = null
+        _showIdlePrompt.value = false
+        inProgressStore.clear()
         locationService.stop()
         _activeSession.value = null
         _activeCourse.value = null

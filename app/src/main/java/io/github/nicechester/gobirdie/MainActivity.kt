@@ -12,6 +12,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
+                val appState: AppState = hiltViewModel()
 
                 Scaffold(
                     bottomBar = {
@@ -61,8 +63,8 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                     ) {
                         composable(TopLevelRoute.SCORECARDS.route) { ScorecardsScreen() }
-                        composable(TopLevelRoute.ROUND.route) { RoundScreen() }
-                        composable(TopLevelRoute.MAP.route) { MapScreen() }
+                        composable(TopLevelRoute.ROUND.route) { RoundScreen(appState) }
+                        composable(TopLevelRoute.MAP.route) { MapScreen(appState) }
                         composable(TopLevelRoute.SETTINGS.route) { SettingsScreen() }
                     }
                 }

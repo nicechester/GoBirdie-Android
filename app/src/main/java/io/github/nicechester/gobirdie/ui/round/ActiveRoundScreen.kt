@@ -38,6 +38,7 @@ fun ActiveRoundScreen(
     playerLocation: GpsPoint?,
     onEndRound: () -> Unit,
     onCancelRound: () -> Unit,
+    onUserInteraction: () -> Unit = {},
 ) {
     val round by session.round.collectAsState()
     val holeIndex by session.currentHoleIndex.collectAsState()
@@ -99,7 +100,7 @@ fun ActiveRoundScreen(
             // Row 1: Mark Shot + Penalty + Undo
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = { showClubPicker = true },
+                    onClick = { onUserInteraction(); showClubPicker = true },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = GolfGreen),
                 ) {
@@ -107,11 +108,11 @@ fun ActiveRoundScreen(
                     Spacer(Modifier.width(4.dp))
                     Text("Mark Shot")
                 }
-                FilledTonalButton(onClick = { session.addPenalty() }, Modifier.width(64.dp).height(48.dp)) {
+                FilledTonalButton(onClick = { onUserInteraction(); session.addPenalty() }, Modifier.width(64.dp).height(48.dp)) {
                     Text("⚠", fontSize = 20.sp)
                 }
                 FilledTonalButton(
-                    onClick = { session.undoLastAction() },
+                    onClick = { onUserInteraction(); session.undoLastAction() },
                     modifier = Modifier.width(64.dp).height(48.dp),
                     enabled = (hole?.strokes ?: 0) > 0,
                 ) {
@@ -130,13 +131,13 @@ fun ActiveRoundScreen(
                     Text("Putts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.weight(1f))
                     IconButton(
-                        onClick = { session.setPutts((hole?.putts ?: 0) - 1) },
+                        onClick = { onUserInteraction(); session.setPutts((hole?.putts ?: 0) - 1) },
                         enabled = (hole?.putts ?: 0) > 0,
                     ) {
                         Icon(Icons.Default.RemoveCircle, "Minus", tint = if ((hole?.putts ?: 0) > 0) GolfGreen else Color.Gray)
                     }
                     Text("${hole?.putts ?: 0}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { session.setPutts((hole?.putts ?: 0) + 1) }) {
+                    IconButton(onClick = { onUserInteraction(); session.setPutts((hole?.putts ?: 0) + 1) }) {
                         Icon(Icons.Default.AddCircle, "Plus", tint = GolfGreen)
                     }
                 }
@@ -147,7 +148,7 @@ fun ActiveRoundScreen(
             // Row 3: Prev / Next
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(
-                    onClick = { session.navigateTo(session.currentHoleNumber - 1) },
+                    onClick = { onUserInteraction(); session.navigateTo(session.currentHoleNumber - 1) },
                     modifier = Modifier.weight(1f),
                     enabled = holeIndex > 0,
                 ) {
@@ -156,7 +157,7 @@ fun ActiveRoundScreen(
                     Text("Prev")
                 }
                 Button(
-                    onClick = { if (isLast) onEndRound() else session.navigateTo(session.currentHoleNumber + 1) },
+                    onClick = { onUserInteraction(); if (isLast) onEndRound() else session.navigateTo(session.currentHoleNumber + 1) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isLast) Color(0xFFE65100) else MaterialTheme.colorScheme.secondaryContainer,

@@ -7,6 +7,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.github.nicechester.gobirdie.core.data.CourseStore
+import io.github.nicechester.gobirdie.core.data.InProgressStore
 import io.github.nicechester.gobirdie.core.data.RoundStore
 import javax.inject.Singleton
 
@@ -21,4 +22,8 @@ object DataModule {
     @Provides
     @Singleton
     fun provideCourseStore(@ApplicationContext ctx: Context) = CourseStore(ctx)
+
+    @Provides
+    @Singleton
+    fun provideInProgressStore(@ApplicationContext ctx: Context) = InProgressStore(ctx)
 }

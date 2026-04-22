@@ -76,4 +76,7 @@ dependencies {
 
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // MapLibre
+    implementation("org.maplibre.gl:android-sdk:11.8.0")
 }

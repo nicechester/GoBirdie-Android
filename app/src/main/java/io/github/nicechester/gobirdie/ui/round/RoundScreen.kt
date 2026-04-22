@@ -24,10 +24,12 @@ private fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
 @Composable
-fun RoundScreen(appState: AppState = hiltViewModel()) {
+fun RoundScreen(appState: AppState) {
     val session by appState.activeSession.collectAsState()
     val course by appState.activeCourse.collectAsState()
     val playerLocation by appState.locationService.location.collectAsState()
+    val pendingResume by appState.pendingResume.collectAsState()
+    val showIdlePrompt by appState.showIdlePrompt.collectAsState()
     val context = LocalContext.current
 
     var showStartRound by remember { mutableStateOf(false) }
@@ -41,6 +43,44 @@ fun RoundScreen(appState: AppState = hiltViewModel()) {
         }
     }
 
+    // Resume prompt
+    if (pendingResume != null) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Resume Round?") },
+            text = { Text("You have an unfinished round at ${pendingResume!!.round.courseName}. Resume where you left off?") },
+            confirmButton = {
+                TextButton(onClick = { appState.resumeRound() }) {
+                    Text("Resume")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { appState.discardInProgressRound() }) {
+                    Text("Discard", color = MaterialTheme.colorScheme.error)
+                }
+            },
+        )
+    }
+
+    // Idle prompt
+    if (showIdlePrompt) {
+        AlertDialog(
+            onDismissRequest = { appState.dismissIdlePrompt() },
+            title = { Text("Still Playing?") },
+            text = { Text("No activity detected for 30 minutes. Are you still playing?") },
+            confirmButton = {
+                TextButton(onClick = { appState.dismissIdlePrompt() }) {
+                    Text("Yes, Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { appState.endActiveRound() }) {
+                    Text("End Round", color = MaterialTheme.colorScheme.error)
+                }
+            },
+        )
+    }
+
     if (session != null && course != null) {
         ActiveRoundScreen(
             session = session!!,
@@ -48,11 +88,11 @@ fun RoundScreen(appState: AppState = hiltViewModel()) {
             playerLocation = playerLocation,
             onEndRound = { appState.endActiveRound() },
             onCancelRound = { appState.cancelActiveRound() },
+            onUserInteraction = { appState.resetIdleTimer() },
         )
     } else if (showStartRound) {
         val vm: StartRoundViewModel = hiltViewModel()
 
-        // Load saved courses immediately, then update with GPS when available
         LaunchedEffect(Unit) {
             vm.loadWithLocation(null)
         }
