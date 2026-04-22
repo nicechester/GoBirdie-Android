@@ -2,7 +2,9 @@ package io.github.nicechester.gobirdie.ui.scorecards
 
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.RoundStore
+import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.Round
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,6 +13,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ScorecardsViewModel @Inject constructor(
     private val roundStore: RoundStore,
+    private val courseStore: CourseStore,
 ) : ViewModel() {
 
     private val _rounds = MutableStateFlow<List<Round>>(emptyList())
@@ -24,4 +27,6 @@ class ScorecardsViewModel @Inject constructor(
         roundStore.delete(id)
         _rounds.value = _rounds.value.filter { it.id != id }
     }
+
+    fun loadCourse(courseId: String): Course? = courseStore.load(courseId)
 }
