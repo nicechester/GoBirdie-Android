@@ -17,3 +17,5 @@
 # Secrets
 secrets.properties
 app/src/main/java/**/Config.kt
+gobirdie-release.jks
+*.jks
