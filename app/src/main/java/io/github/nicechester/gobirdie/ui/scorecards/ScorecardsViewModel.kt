@@ -29,4 +29,11 @@ class ScorecardsViewModel @Inject constructor(
     }
 
     fun loadCourse(courseId: String): Course? = courseStore.load(courseId)
+
+    fun loadRound(id: String): Round? = roundStore.load(id)
+
+    fun saveRound(round: Round) {
+        roundStore.save(round)
+        _rounds.value = roundStore.loadAll()
+    }
 }
