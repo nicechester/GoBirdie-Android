@@ -236,7 +236,7 @@ dependencies {
 - [x] Scorecard detail (front 9, back 9, totals, stats)
 - [x] Color-coded scores (eagle/birdie/par/bogey/double+)
 - [x] Swipe-to-delete rounds
-- [ ] Shot map per hole
+- [x] Shot map per hole
 
 ### M5 — Settings & Polish (Week 5) ✅
 - [x] Settings screen (tee color picker)
@@ -244,7 +244,7 @@ dependencies {
 - [x] Course manager (search, download, delete with swipe)
 - [x] Tip jar (Venmo link)
 - [x] About section (version, GitHub, attribution)
-- [ ] Orientation lock during round
+- [x] Orientation lock during round
 
 ### M6 — Release Prep (Week 6)
 - [x] GitHub Actions CI workflow (android.yml)

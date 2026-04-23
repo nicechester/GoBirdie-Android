@@ -469,17 +469,17 @@ private fun ShotMapOverlay(
         shots.forEach { s ->
             val px = project(s.location)
             val color = shotMapClubColor(s.club)
-            drawCircle(color, 14f, px)
-            drawCircle(Color.White, 14f, px, style = Stroke(2f))
+            drawCircle(color, 28f, px)
+            drawCircle(Color.White, 28f, px, style = Stroke(2f))
             // Club abbreviation
             val paint = android.graphics.Paint().apply {
                 this.color = android.graphics.Color.WHITE
-                textSize = 22f
+                textSize = 32f
                 isFakeBoldText = true
                 textAlign = android.graphics.Paint.Align.CENTER
                 isAntiAlias = true
             }
-            drawContext.canvas.nativeCanvas.drawText(s.club.shortName, px.x, px.y + 7f, paint)
+            drawContext.canvas.nativeCanvas.drawText(s.club.shortName, px.x, px.y + 12f, paint)
         }
 
         // Tee marker
@@ -492,10 +492,10 @@ private fun ShotMapOverlay(
         // Green / putt label
         courseHole?.greenCenter?.let {
             val px = project(it)
-            drawCircle(GolfGreen, 16f, px)
-            drawCircle(Color.White, 16f, px, style = Stroke(3f))
+            drawCircle(GolfGreen, 22f, px)
+            drawCircle(Color.White, 22f, px, style = Stroke(3f))
             if (holeScore.putts > 0) {
-                shotMapLabel(this, "${holeScore.putts}P", Offset(px.x, px.y + 24f), GolfGreen)
+                shotMapLabel(this, "${holeScore.putts} putts", Offset(px.x, px.y + 32f), GolfGreen)
             }
         }
     }
@@ -557,7 +557,7 @@ private fun shotMapClubColor(club: ClubType): Color = when (club) {
 private fun shotMapLabel(scope: DrawScope, text: String, center: Offset, bgColor: Color) {
     val paint = android.graphics.Paint().apply {
         color = android.graphics.Color.WHITE
-        textSize = 26f
+        textSize = 38f
         isFakeBoldText = true
         textAlign = android.graphics.Paint.Align.CENTER
         isAntiAlias = true
@@ -571,7 +571,7 @@ private fun shotMapLabel(scope: DrawScope, text: String, center: Offset, bgColor
     }
     val w = paint.measureText(text)
     scope.drawContext.canvas.nativeCanvas.apply {
-        drawRoundRect(center.x - w / 2 - 6f, center.y - 14f, center.x + w / 2 + 6f, center.y + 12f, 6f, 6f, bgPaint)
-        drawText(text, center.x, center.y + 7f, paint)
+        drawRoundRect(center.x - w / 2 - 10f, center.y - 20f, center.x + w / 2 + 10f, center.y + 18f, 8f, 8f, bgPaint)
+        drawText(text, center.x, center.y + 10f, paint)
     }
 }

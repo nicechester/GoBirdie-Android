@@ -1,5 +1,6 @@
 package io.github.nicechester.gobirdie
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,6 +37,11 @@ class MainActivity : ComponentActivity() {
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
                 val appState: AppState = hiltViewModel()
+                val hasActiveRound = appState.activeSession != null
+                this@MainActivity.requestedOrientation = if (hasActiveRound)
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                else
+                    ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
                 Scaffold(
                     bottomBar = {
