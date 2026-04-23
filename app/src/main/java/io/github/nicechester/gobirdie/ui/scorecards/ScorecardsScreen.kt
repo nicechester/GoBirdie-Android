@@ -1,5 +1,7 @@
 package io.github.nicechester.gobirdie.ui.scorecards
 
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,11 +16,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -139,20 +143,26 @@ private fun RoundRow(round: Round, onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDismiss: () -> Unit) {
-    val playedHoles = round.holes.filter { it.strokes > 0 }
+    var currentRound by remember { mutableStateOf(round) }
+    val playedHoles = currentRound.holes.filter { it.strokes > 0 }
     val parTotal = playedHoles.sumOf { it.par }
-    val frontNine = round.holes.take(9).let { if (it.any { h -> h.strokes > 0 }) it else emptyList() }
-    val backNine = round.holes.drop(9).take(9).let { if (it.any { h -> h.strokes > 0 }) it else emptyList() }
-    val holesWithShots = round.holes.filter { it.shots.isNotEmpty() }
+    val frontNine = currentRound.holes.take(9).let { if (it.any { h -> h.strokes > 0 }) it else emptyList() }
+    val backNine = currentRound.holes.drop(9).take(9).let { if (it.any { h -> h.strokes > 0 }) it else emptyList() }
+    val holesWithShots = currentRound.holes.filter { it.shots.isNotEmpty() }
     var showShotMap by remember { mutableStateOf(false) }
 
     if (showShotMap) {
-        val course = remember { viewModel.loadCourse(round.courseId) }
+        val course = remember { viewModel.loadCourse(currentRound.courseId) }
         if (course != null) {
             ShotMapScreen(
                 holes = holesWithShots,
                 courseHoles = course.holes,
-                onDismiss = { showShotMap = false },
+                round = currentRound,
+                viewModel = viewModel,
+                onDismiss = {
+                    showShotMap = false
+                    currentRound = viewModel.loadRound(currentRound.id) ?: currentRound
+                },
             )
         } else {
             showShotMap = false
@@ -163,7 +173,7 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(round.courseName) },
+                title = { Text(currentRound.courseName) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 },
@@ -175,7 +185,7 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
         ) {
             // Date
             Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text("📅 ${formatDate(round.startedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("📅 ${formatDate(currentRound.startedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             // Front 9
@@ -191,7 +201,7 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
 
             // Totals
             HorizontalDivider()
-            TotalsRow(round, playedHoles, parTotal)
+            TotalsRow(currentRound, playedHoles, parTotal)
 
             // Stats
             HorizontalDivider(Modifier.padding(top = 4.dp))
@@ -335,10 +345,21 @@ private fun formatDate(iso: String): String =
 private fun ShotMapScreen(
     holes: List<HoleScore>,
     courseHoles: List<Hole>,
+    round: Round,
+    viewModel: ScorecardsViewModel,
     onDismiss: () -> Unit,
 ) {
     var holeIdx by remember { mutableIntStateOf(0) }
-    val holeScore = holes.getOrNull(holeIdx) ?: return
+    var editMode by remember { mutableStateOf(false) }
+    var editableHoles by remember { mutableStateOf(holes) }
+    var selectedShotId by remember { mutableStateOf<String?>(null) }
+    var dirty by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showClubPicker by remember { mutableStateOf(false) }
+    var clubPickerShotId by remember { mutableStateOf<String?>(null) }
+    var clubPickerInitialClub by remember { mutableStateOf(ClubType.UNKNOWN) }
+
+    val holeScore = editableHoles.getOrNull(holeIdx) ?: return
     val courseHole = courseHoles.firstOrNull { it.number == holeScore.number }
     val shots = holeScore.shots.sortedBy { it.sequence }
 
@@ -346,11 +367,64 @@ private fun ShotMapScreen(
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
 
-    // Camera update on hole change
+    fun holeIndex() = editableHoles.indexOfFirst { it.id == holeScore.id }
+
+    fun saveEdits() {
+        val updated = round.copy(
+            holes = editableHoles,
+            totalStrokes = editableHoles.sumOf { it.strokes },
+            totalPutts = editableHoles.sumOf { it.putts },
+        )
+        viewModel.saveRound(updated)
+    }
+
+    // Camera update on hole/edit change
     LaunchedEffect(holeIdx, styleLoaded) {
         val map = mapLibreMap ?: return@LaunchedEffect
         if (!styleLoaded) return@LaunchedEffect
         shotMapCamera(map, courseHole, shots)
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete this shot?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    val sid = selectedShotId ?: return@TextButton
+                    val hi = holeIndex().takeIf { it >= 0 } ?: return@TextButton
+                    val updatedShots = editableHoles[hi].shots
+                        .filter { it.id != sid }
+                        .mapIndexed { i, s -> s.copy(sequence = i + 1) }
+                    editableHoles = editableHoles.toMutableList().also {
+                        it[hi] = it[hi].copy(shots = updatedShots, strokes = updatedShots.size + it[hi].putts)
+                    }
+                    selectedShotId = null
+                    dirty = true
+                }) { Text("Delete", color = Color.Red) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (showClubPicker) {
+        ClubPickerDialog(
+            initial = clubPickerInitialClub,
+            onSelect = { club ->
+                showClubPicker = false
+                val sid = clubPickerShotId ?: return@ClubPickerDialog
+                val hi = holeIndex().takeIf { it >= 0 } ?: return@ClubPickerDialog
+                val si = editableHoles[hi].shots.indexOfFirst { it.id == sid }.takeIf { it >= 0 } ?: return@ClubPickerDialog
+                editableHoles = editableHoles.toMutableList().also {
+                    val shots2 = it[hi].shots.toMutableList()
+                    shots2[si] = shots2[si].copy(club = club)
+                    it[hi] = it[hi].copy(shots = shots2)
+                }
+                dirty = true
+            },
+            onDismiss = { showClubPicker = false },
+        )
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -384,6 +458,48 @@ private fun ShotMapScreen(
                 shots = shots,
                 courseHole = courseHole,
                 holeScore = holeScore,
+                editMode = editMode,
+                selectedShotId = selectedShotId,
+                onTapShot = { shotId ->
+                    if (selectedShotId == shotId) {
+                        // second tap → club picker
+                        clubPickerShotId = shotId
+                        clubPickerInitialClub = holeScore.shots.firstOrNull { it.id == shotId }?.club ?: ClubType.UNKNOWN
+                        showClubPicker = true
+                    } else {
+                        selectedShotId = shotId
+                    }
+                },
+                onTapMap = { gps ->
+                    if (editMode) {
+                        val hi = holeIndex().takeIf { it >= 0 } ?: return@ShotMapOverlay
+                        val seq = (editableHoles[hi].shots.maxOfOrNull { it.sequence } ?: 0) + 1
+                        val newShot = Shot(
+                            sequence = seq,
+                            location = gps,
+                            timestamp = java.time.Instant.now().toString(),
+                            club = ClubType.UNKNOWN,
+                        )
+                        editableHoles = editableHoles.toMutableList().also {
+                            it[hi] = it[hi].copy(shots = it[hi].shots + newShot, strokes = it[hi].shots.size + 1 + it[hi].putts)
+                        }
+                        selectedShotId = newShot.id
+                        clubPickerShotId = newShot.id
+                        clubPickerInitialClub = ClubType.UNKNOWN
+                        showClubPicker = true
+                        dirty = true
+                    }
+                },
+                onMoveShot = { shotId, gps ->
+                    val hi = holeIndex().takeIf { it >= 0 } ?: return@ShotMapOverlay
+                    val si = editableHoles[hi].shots.indexOfFirst { it.id == shotId }.takeIf { it >= 0 } ?: return@ShotMapOverlay
+                    editableHoles = editableHoles.toMutableList().also {
+                        val shots2 = it[hi].shots.toMutableList()
+                        shots2[si] = shots2[si].copy(location = gps)
+                        it[hi] = it[hi].copy(shots = shots2)
+                    }
+                    dirty = true
+                },
             )
         }
 
@@ -397,7 +513,7 @@ private fun ShotMapScreen(
                 Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = { if (holeIdx > 0) holeIdx-- }, enabled = holeIdx > 0) {
+                IconButton(onClick = { if (holeIdx > 0) { holeIdx--; selectedShotId = null } }, enabled = holeIdx > 0) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "Prev", tint = if (holeIdx > 0) Color.White else Color.Gray)
                 }
                 Spacer(Modifier.weight(1f))
@@ -409,23 +525,159 @@ private fun ShotMapScreen(
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { if (holeIdx < holes.size - 1) holeIdx++ }, enabled = holeIdx < holes.size - 1) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next", tint = if (holeIdx < holes.size - 1) Color.White else Color.Gray)
+                IconButton(onClick = { if (holeIdx < editableHoles.size - 1) { holeIdx++; selectedShotId = null } }, enabled = holeIdx < editableHoles.size - 1) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next", tint = if (holeIdx < editableHoles.size - 1) Color.White else Color.Gray)
                 }
             }
         }
 
-        // Close button
-        Button(
-            onClick = onDismiss,
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.6f)),
-            modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp).fillMaxWidth(),
+        // Bottom bar
+        Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         ) {
-            Icon(Icons.Default.Close, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Close")
+            // Edit hints + delete
+            if (editMode) {
+                Surface(color = Color.Black.copy(alpha = 0.6f)) {
+                    Column(Modifier.fillMaxWidth()) {
+                        if (selectedShotId != null) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TextButton(
+                                    onClick = { showDeleteConfirm = true },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
+                                ) {
+                                    Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Delete Shot", fontSize = 12.sp)
+                                }
+                                Spacer(Modifier.weight(1f))
+                                Text("Drag pin to move", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                            }
+                        }
+                        // Putts +/-
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Text("Putts", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.width(16.dp))
+                            IconButton(
+                                onClick = {
+                                    val hi = holeIndex().takeIf { it >= 0 } ?: return@IconButton
+                                    if (editableHoles[hi].putts > 0) {
+                                        editableHoles = editableHoles.toMutableList().also {
+                                            it[hi] = it[hi].copy(putts = it[hi].putts - 1, strokes = it[hi].strokes - 1)
+                                        }
+                                        dirty = true
+                                    }
+                                },
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Text("−", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            }
+                            Text(
+                                "${editableHoles.getOrNull(holeIdx)?.putts ?: holeScore.putts}",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.width(36.dp),
+                                textAlign = TextAlign.Center,
+                            )
+                            IconButton(
+                                onClick = {
+                                    val hi = holeIndex().takeIf { it >= 0 } ?: return@IconButton
+                                    editableHoles = editableHoles.toMutableList().also {
+                                        it[hi] = it[hi].copy(putts = it[hi].putts + 1, strokes = it[hi].strokes + 1)
+                                    }
+                                    dirty = true
+                                },
+                                modifier = Modifier.size(36.dp),
+                            ) {
+                                Text("+", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("Tap map to add shot", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                            Text("Tap pin to select", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+
+            // Edit / Close buttons
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = {
+                        if (editMode) {
+                            selectedShotId = null
+                            if (dirty) saveEdits()
+                        }
+                        editMode = !editMode
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (editMode) Color.White else Color.Black.copy(alpha = 0.6f),
+                        contentColor = if (editMode) Color.Black else Color.White,
+                    ),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (editMode) "Done" else "Edit")
+                }
+                Button(
+                    onClick = {
+                        if (dirty) saveEdits()
+                        onDismiss()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.6f)),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.Close, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Close")
+                }
+            }
         }
     }
+}
+
+// ─── Club Picker Dialog ──────────────────────────────────────────────
+
+@Composable
+private fun ClubPickerDialog(initial: ClubType, onSelect: (ClubType) -> Unit, onDismiss: () -> Unit) {
+    val clubs = ClubType.entries.filter { it != ClubType.UNKNOWN }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Club") },
+        text = {
+            androidx.compose.foundation.lazy.LazyColumn {
+                items(clubs) { club ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onSelect(club) }
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (club == initial) {
+                            Text("✓", Modifier.width(24.dp), color = GolfGreen, fontWeight = FontWeight.Bold)
+                        } else {
+                            Spacer(Modifier.width(24.dp))
+                        }
+                        Text(club.displayName, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable
@@ -434,15 +686,70 @@ private fun ShotMapOverlay(
     shots: List<Shot>,
     courseHole: Hole?,
     holeScore: HoleScore,
+    editMode: Boolean = false,
+    selectedShotId: String? = null,
+    onTapShot: (String) -> Unit = {},
+    onTapMap: (GpsPoint) -> Unit = {},
+    onMoveShot: (String, GpsPoint) -> Unit = { _, _ -> },
 ) {
     fun project(gps: GpsPoint): Offset {
         val px = map.projection.toScreenLocation(LatLng(gps.lat, gps.lon))
         return Offset(px.x, px.y)
     }
 
+    var draggingShotId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+
     val dashedEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
 
-    Canvas(Modifier.fillMaxSize()) {
+    Canvas(
+        Modifier
+            .fillMaxSize()
+            .pointerInput(editMode, shots) {
+                detectTapGestures { tapOffset ->
+                    // Check if tapped on a shot dot
+                    val hit = shots.firstOrNull { s ->
+                        (project(s.location) - tapOffset).getDistance() < 40f
+                    }
+                    if (hit != null) {
+                        onTapShot(hit.id)
+                    } else {
+                        val coord = map.projection.fromScreenLocation(
+                            android.graphics.PointF(tapOffset.x, tapOffset.y)
+                        )
+                        onTapMap(GpsPoint(lat = coord.latitude, lon = coord.longitude))
+                    }
+                }
+            }
+            .pointerInput(editMode, shots) {
+                if (!editMode) return@pointerInput
+                detectDragGestures(
+                    onDragStart = { startOffset ->
+                        draggingShotId = shots.firstOrNull { s ->
+                            (project(s.location) - startOffset).getDistance() < 40f
+                        }?.id
+                        dragOffset = startOffset
+                    },
+                    onDrag = { change, _ ->
+                        if (draggingShotId != null) {
+                            dragOffset = change.position
+                            change.consume()
+                        }
+                    },
+                    onDragEnd = {
+                        val sid = draggingShotId
+                        if (sid != null) {
+                            val coord = map.projection.fromScreenLocation(
+                                android.graphics.PointF(dragOffset.x, dragOffset.y)
+                            )
+                            onMoveShot(sid, GpsPoint(lat = coord.latitude, lon = coord.longitude))
+                        }
+                        draggingShotId = null
+                    },
+                    onDragCancel = { draggingShotId = null },
+                )
+            }
+    ) {
         // Build point chain: tee → shots → green
         data class ChainPoint(val offset: Offset, val gps: GpsPoint, val club: ClubType?)
         val chain = mutableListOf<ChainPoint>()
@@ -467,11 +774,13 @@ private fun ShotMapOverlay(
 
         // Shot dots with club abbreviation
         shots.forEach { s ->
-            val px = project(s.location)
+            val isBeingDragged = s.id == draggingShotId
+            val px = if (isBeingDragged) dragOffset else project(s.location)
+            val isSelected = s.id == selectedShotId
             val color = shotMapClubColor(s.club)
             drawCircle(color, 28f, px)
-            drawCircle(Color.White, 28f, px, style = Stroke(2f))
-            // Club abbreviation
+            drawCircle(if (isSelected) Color.White else Color.White, 28f, px, style = Stroke(if (isSelected) 4f else 2f))
+            if (isSelected) drawCircle(Color.White, 32f, px, style = Stroke(2f))
             val paint = android.graphics.Paint().apply {
                 this.color = android.graphics.Color.WHITE
                 textSize = 32f
