@@ -37,6 +37,10 @@ class WatchRoundSession(private val context: Context) {
     private var accumulatedStrokes = 0
     val totalStrokes: Int get() = accumulatedStrokes + strokes.value
 
+    // Heart rate
+    val latestHeartRate = MutableStateFlow<Int?>(null)
+    private val heartRateSamples = mutableListOf<Map<String, Any>>()
+
     // Green coordinates for distance computation
     private var greenFront: GpsPoint? = null
     private var greenCenter: GpsPoint? = null
@@ -136,6 +140,8 @@ class WatchRoundSession(private val context: Context) {
         greenFront = null
         greenCenter = null
         greenBack = null
+        latestHeartRate.value = null
+        heartRateSamples.clear()
         dismissClubPicker()
         clubBag.value = emptyList()
     }
@@ -260,6 +266,16 @@ class WatchRoundSession(private val context: Context) {
         recomputeDistances()
     }
 
+    fun onHeartRateUpdate(bpm: Int) {
+        latestHeartRate.value = bpm
+        val sample = mutableMapOf<String, Any>(
+            "timestamp" to (System.currentTimeMillis() / 1000.0),
+            "bpm" to bpm,
+        )
+        currentLocation?.let { if (it.hasAltitude()) sample["altitude"] = it.altitude }
+        heartRateSamples.add(sample)
+    }
+
     private fun stopExerciseService() {
         if (exerciseServiceStarted) {
             exerciseServiceStarted = false
@@ -328,6 +344,7 @@ class WatchRoundSession(private val context: Context) {
             msg["lon"] = it.longitude
             if (it.hasAltitude()) msg["altitude"] = it.altitude
         }
+        latestHeartRate.value?.let { msg["heartRate"] = it }
         sendToPhone("/watch/action", msg)
     }
 
@@ -348,7 +365,25 @@ class WatchRoundSession(private val context: Context) {
     }
 
     private fun sendEndRoundToPhone() {
-        sendToPhone("/watch/action", mapOf("action" to "endRound"))
+        val msg = mutableMapOf<String, Any>("action" to "endRound")
+        if (heartRateSamples.isNotEmpty()) {
+            // Serialize timeline as JSON array string since sendToPhone only handles primitives
+            val timeline = buildJsonArray {
+                heartRateSamples.forEach { sample ->
+                    add(buildJsonObject {
+                        sample.forEach { (k, v) ->
+                            when (v) {
+                                is Int -> put(k, v)
+                                is Double -> put(k, v)
+                                is String -> put(k, v)
+                            }
+                        }
+                    })
+                }
+            }.toString()
+            msg["heartRateTimeline"] = timeline
+        }
+        sendToPhone("/watch/action", msg)
     }
 
     private fun sendCancelRoundToPhone() {

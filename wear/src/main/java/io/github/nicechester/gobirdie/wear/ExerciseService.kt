@@ -91,10 +91,18 @@ class ExerciseService : Service() {
             val cb = object : ExerciseUpdateCallback {
                 override fun onExerciseUpdateReceived(update: ExerciseUpdate) {
                     val points = update.latestMetrics.getData(DataType.LOCATION)
-                    val last = points.lastOrNull()?.value ?: return
-                    WearSessionHolder.session?.onExerciseLocation(
-                        last.latitude, last.longitude, last.altitude
-                    )
+                    val last = points.lastOrNull()?.value ?: null
+                    if (last != null) {
+                        WearSessionHolder.session?.onExerciseLocation(
+                            last.latitude, last.longitude, last.altitude
+                        )
+                    }
+
+                    val hrPoints = update.latestMetrics.getData(DataType.HEART_RATE_BPM)
+                    val lastHr = hrPoints.lastOrNull()?.value
+                    if (lastHr != null) {
+                        WearSessionHolder.session?.onHeartRateUpdate(lastHr.toInt())
+                    }
                 }
                 override fun onLapSummaryReceived(lapSummary: ExerciseLapSummary) {}
                 override fun onRegistered() { Log.i(TAG, "Exercise callback registered") }
