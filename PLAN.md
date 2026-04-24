@@ -10,14 +10,17 @@ Android port of GoBirdie, a golf GPS and shot tracking app. The iOS version is t
 |-------|-----------------|---------|
 | Language | Swift | Kotlin |
 | UI | SwiftUI | Jetpack Compose |
+| Watch UI | SwiftUI (watchOS) | Compose for Wear OS + Horologist |
 | Map | MapLibre iOS | MapLibre Android SDK |
 | Location | CoreLocation | Google Fused Location Provider |
+| Watch Location | CoreLocation + HKWorkoutSession | Health Services API (ExerciseClient) |
+| Phone↔Watch | WatchConnectivity | Wearable Data Layer API |
 | Storage | JSON files (Documents/) | JSON files (internal storage) |
 | HTTP | URLSession | Ktor Client or OkHttp |
 | Architecture | MVVM + ObservableObject | MVVM + ViewModel + StateFlow |
 | DI | EnvironmentObject | Hilt |
 | Build | Xcode / SPM | Gradle / Kotlin DSL |
-| Min SDK | iOS 16.6 | API 26 (Android 8.0) |
+| Min SDK | iOS 16.6 | Phone: API 26 (Android 8.0) / Wear: API 30 |
 
 ## Project Structure
 
@@ -32,6 +35,7 @@ android/
 │       │   ├── location/       # Fused location provider wrapper
 │       │   ├── distance/       # Haversine distance engine
 │       │   ├── session/        # RoundSession state machine
+│       │   ├── sync/           # HTTP sync server + mDNS advertisement
 │       │   ├── ui/
 │       │   │   ├── round/      # StartRoundScreen, ActiveRoundScreen, HoleControls
 │       │   │   ├── map/        # MapLibre composable, overlays
@@ -41,6 +45,13 @@ android/
 │       │   ├── di/             # Hilt modules
 │       │   ├── AppState.kt     # Round lifecycle, auto-save, idle detection
 │       │   └── MainActivity.kt
+│       └── res/
+├── wear/
+│   └── src/main/
+│       ├── java/io/github/nicechester/gobirdie/
+│       │   ├── WatchRoundSession.kt  # Hole state, strokes, GPS distances, club picker
+│       │   ├── DataLayerService.kt   # Wear Data Layer API (phone ↔ watch)
+│       │   └── ui/                   # Compose for Wear OS screens
 │       └── res/
 ├── build.gradle.kts
 └── gradle/
@@ -109,16 +120,23 @@ Same file-based JSON approach for simplicity and data portability.
 |---|--------|---------------|----------|
 | 14 | **Map Explore Mode** | `MapTab` explore — browse courses without a round | P2 |
 | 15 | **Tap-to-Measure** | Map tap → distance from player + distance to green | P2 |
-| 16 | **Desktop Sync** | `SyncServer` — needs protocol design for Android (WiFi Direct or HTTP) | P3 |
+| 16 | **Desktop Sync** | `SyncServer` — HTTP server on Android for desktop discovery | P2 |
+
+### Phase 4 — Watch & Desktop Sync
+
+| # | Screen | iOS Reference | Priority |
+|---|--------|---------------|----------|
+| 17 | **Wear OS — Waiting / Active Round** | `WatchRoundView` — distances, mark shot, putts, club picker | P2 |
+| 18 | **Wear OS — End/Cancel Round** | `EndRoundPage` — finish or cancel from wrist | P2 |
+| 19 | **Desktop Sync (HTTP server)** | `SyncServer` (MultipeerConnectivity) — replaced with HTTP on Android | P2 |
 
 ### Not Porting (iOS-only)
 
 | Feature | Reason |
 |---------|--------|
-| Apple Watch companion | No direct equivalent; Wear OS is a separate project |
-| MultipeerConnectivity | Apple-only; replace with HTTP or WiFi Direct for sync |
-| HKWorkoutSession | HealthConnect is the Android equivalent, lower priority |
-| WatchConnectivity | N/A |
+| MultipeerConnectivity | Apple-only; Android uses HTTP server for desktop sync |
+| WatchConnectivity | Apple-only; Android uses Wear OS Data Layer API |
+| HKWorkoutSession | Wear OS uses Health Services API instead |
 
 ## API Clients
 
@@ -168,7 +186,7 @@ MapLibre Android SDK (open-source, same tile sources as iOS).
 ## Dependencies
 
 ```kotlin
-// build.gradle.kts
+// app/build.gradle.kts
 dependencies {
     // Compose
     implementation("androidx.compose.material3:material3:1.2+")
@@ -190,6 +208,26 @@ dependencies {
     // DI
     implementation("com.google.dagger:hilt-android:2.50+")
     kapt("com.google.dagger:hilt-compiler:2.50+")
+
+    // Wearable Data Layer (phone side)
+    implementation("com.google.android.gms:play-services-wearable:18.1+")
+}
+
+// wear/build.gradle.kts
+dependencies {
+    // Compose for Wear OS
+    implementation("androidx.wear.compose:compose-material:1.3+")
+    implementation("androidx.wear.compose:compose-foundation:1.3+")
+    implementation("com.google.android.horologist:horologist-compose-layout:0.6+")
+
+    // Health Services (ExerciseClient for GPS + heart rate)
+    implementation("androidx.health:health-services-client:1.1+")
+
+    // Wearable Data Layer (watch side)
+    implementation("com.google.android.gms:play-services-wearable:18.1+")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6+")
 }
 ```
 
@@ -244,9 +282,36 @@ dependencies {
 - [x] Course manager (search, download, delete with swipe)
 - [x] Tip jar (Venmo link)
 - [x] About section (version, GitHub, attribution)
-- [ ] Orientation lock during round
+- [x] Orientation lock during round
 
-### M6 — Release Prep (Week 6)
+### M6 — Wear OS Watch (Week 7-8)
+- [ ] Wear OS module (`wear/`) with Compose for Wear OS + Horologist
+- [ ] Data Layer API bridge (phone ↔ watch messaging, replaces WatchConnectivity)
+  - Phone → Watch: hole coordinates, par, course name, club bag, stroke updates
+  - Watch → Phone: shot (with GPS + heart rate), stroke/putt counts, club selection, navigate, end/cancel
+- [ ] WatchRoundSession — hole number, par, strokes, putts, club bag state
+- [ ] GPS distances on wrist (front/pin/back yards via watch's onboard GPS)
+- [ ] Mark Shot button + club picker overlay (rotary scroll, auto-dismiss after 10s)
+- [ ] Add Stroke / Add Putt / Remove Putt controls
+- [ ] Hole navigation (swipe left/right, rotary input for crown/bezel)
+- [ ] End Round / Cancel Round page
+- [ ] Round Ended confirmation screen
+- [ ] Health Services API — ExerciseClient golf workout (keeps GPS alive when phone is in cart)
+- [ ] Heart rate sampling → send timeline to phone on round end
+- [ ] Ambient Mode / Always-On Display — high-contrast simplified scoring view
+- [ ] Standalone capability — watch GPS works independently of phone
+
+### M7 — Desktop Sync (Week 8-9)
+- [ ] HTTP sync server on Android (NanoHTTPD or Ktor embedded server)
+- [ ] `GET /api/rounds` — return round summaries JSON (same format as iOS `list` command)
+- [ ] `GET /api/rounds/:id` — return full round JSON (same format as iOS `round:` command)
+- [ ] mDNS/NSD service advertisement (`_gobirdie._tcp`) for desktop auto-discovery
+- [ ] Settings toggle to start/stop sync server
+- [ ] Desktop app: add HTTP transport alongside MultipeerConnectivity helper
+- [ ] WiFi-only guard (don't serve over mobile data)
+- [ ] Evaluate Nearby Connections API as alternative transport (cross-platform P2P, no WiFi required)
+
+### M8 — Release Prep (Week 10)
 - [x] GitHub Actions CI workflow (android.yml)
 - [ ] UI polish, Material 3 theming
 - [ ] Edge cases, error handling
@@ -263,7 +328,7 @@ The JSON format is identical between iOS and Android. A round saved on iOS can b
 
 ## Open Questions
 
-1. **Wear OS** — Port the Watch companion? Separate project or same repo?
-2. **Desktop sync protocol** — MultipeerConnectivity is Apple-only. Options: HTTP server on phone, WiFi Direct, or cloud sync
+1. ~~**Wear OS** — Port the Watch companion? Separate project or same repo?~~ → Same repo, `wear/` module
+2. ~~**Desktop sync protocol** — MultipeerConnectivity is Apple-only.~~ → HTTP server + mDNS on Android
 3. **Play Store vs F-Droid** — Distribute on both?
 4. **Garmin Connect integration** — Import rounds from Garmin watches on Android?

@@ -17,5 +17,6 @@ dependencyResolutionManagement {
 rootProject.name = "GoBirdie"
 
 include(":app")
+include(":wear")
 include(":core:model")
 include(":core:data")

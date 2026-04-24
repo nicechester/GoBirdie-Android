@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.nicechester.gobirdie.connectivity.WearConnectivityService
+import io.github.nicechester.gobirdie.connectivity.WatchActions
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.InProgressSnapshot
 import io.github.nicechester.gobirdie.core.data.InProgressStore
@@ -29,13 +31,14 @@ private const val IDLE_TIMEOUT_MS = 30 * 60 * 1000L // 30 minutes
 
 @HiltViewModel
 class AppState @Inject constructor(
-    @ApplicationContext context: Context,
+    @ApplicationContext private val context: Context,
     private val roundStore: RoundStore,
     private val courseStore: CourseStore,
     private val inProgressStore: InProgressStore,
 ) : ViewModel() {
 
     val locationService = LocationService(context)
+    val wearService = WearConnectivityService(context)
 
     private val _activeSession = MutableStateFlow<RoundSession?>(null)
     val activeSession: StateFlow<RoundSession?> = _activeSession
@@ -51,6 +54,7 @@ class AppState @Inject constructor(
 
     private var autoSaveJob: Job? = null
     private var idleJob: Job? = null
+    private var holeObserverJob: Job? = null
 
     init {
         checkForInProgressRound()
@@ -74,6 +78,8 @@ class AppState @Inject constructor(
         locationService.start()
         startAutoSave()
         resetIdleTimer()
+        sendHoleDataToWatch()
+        observeHoleChanges()
         return session
     }
 
@@ -82,10 +88,12 @@ class AppState @Inject constructor(
         session.endRound()
         roundStore.save(session.snapshot())
         Log.i(TAG, "Round saved: ${session.snapshot().id}")
+        wearService.sendRoundEnded()
         cleanup()
     }
 
     fun cancelActiveRound() {
+        wearService.sendRoundCancelled()
         cleanup()
     }
 
@@ -165,10 +173,80 @@ class AppState @Inject constructor(
         autoSaveJob = null
         idleJob?.cancel()
         idleJob = null
+        holeObserverJob?.cancel()
+        holeObserverJob = null
         _showIdlePrompt.value = false
         inProgressStore.clear()
         locationService.stop()
         _activeSession.value = null
         _activeCourse.value = null
+    }
+
+    // ── Watch connectivity ──
+
+    private fun sendHoleDataToWatch() {
+        val session = _activeSession.value ?: return
+        val course = _activeCourse.value ?: return
+        val holeIdx = session.currentHoleIndex.value
+        val courseHole = course.holes.getOrNull(holeIdx) ?: return
+        val round = session.snapshot()
+        val prefs = context.getSharedPreferences("gobirdie_clubs", Context.MODE_PRIVATE)
+        val defaultSet = ClubType.defaultBag.map { it.name }.toSet()
+        val enabledNames = prefs.getStringSet("enabled", defaultSet) ?: defaultSet
+        val enabledClubs = ClubType.entries.filter { it.name in enabledNames && it != ClubType.UNKNOWN }
+        wearService.sendHoleData(
+            hole = courseHole,
+            holeNumber = courseHole.number,
+            courseName = round.courseName,
+            totalStrokes = round.totalStrokes,
+            totalHoles = course.holes.size,
+            enabledClubs = enabledClubs,
+        )
+    }
+
+    private fun observeHoleChanges() {
+        holeObserverJob?.cancel()
+        holeObserverJob = viewModelScope.launch {
+            val session = _activeSession.value ?: return@launch
+            session.currentHoleIndex.collect {
+                sendHoleDataToWatch()
+            }
+        }
+    }
+
+    /** Called from BroadcastReceiver when watch sends an action. */
+    fun handleWatchAction(action: String, extras: Map<String, Any?>) {
+        val session = _activeSession.value ?: return
+        when (action) {
+            "shot" -> {
+                val lat = extras["lat"] as? Double
+                val lon = extras["lon"] as? Double
+                val loc = if (lat != null && lon != null) GpsPoint(lat, lon)
+                    else locationService.location.value ?: GpsPoint(0.0, 0.0)
+                val clubRaw = extras["club"] as? String
+                val club = ClubType.entries.firstOrNull { it.name.equals(clubRaw, ignoreCase = true) } ?: ClubType.UNKNOWN
+                val altitude = extras["altitude"] as? Double
+                session.markShot(loc, club, altitudeMeters = altitude)
+                resetIdleTimer()
+            }
+            "stroke" -> {
+                val strokes = extras["strokes"] as? Int ?: return
+                val putts = extras["putts"] as? Int ?: return
+                session.setPutts(putts)
+                // Strokes are derived from putts + shots, so we trust the watch count
+                resetIdleTimer()
+            }
+            "navigate" -> {
+                val holeNumber = extras["holeNumber"] as? Int ?: return
+                session.navigateTo(holeNumber)
+                resetIdleTimer()
+            }
+            "endRound" -> endActiveRound()
+            "cancelRound" -> cancelActiveRound()
+            "clubSelection" -> {
+                // Watch selected a club for the last shot — update it
+                resetIdleTimer()
+            }
+        }
     }
 }

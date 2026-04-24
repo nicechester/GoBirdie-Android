@@ -119,10 +119,10 @@ private fun SettingsMain(onCourses: () -> Unit, onClubs: () -> Unit) {
         }
         item {
             Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp).clickable {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/nicechester/GoBirdie")))
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/nicechester/GoBirdie-Android/blob/main/MANUAL.md")))
             }) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("GitHub", style = MaterialTheme.typography.bodyMedium)
+                    Text("Manual", style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.weight(1f))
                     Icon(Icons.Default.OpenInNew, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
