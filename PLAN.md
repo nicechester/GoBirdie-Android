@@ -297,7 +297,7 @@ dependencies {
 - [x] End Round / Cancel Round page
 - [x] Round Ended confirmation screen
 - [x] Watch screenshots added to MANUAL.md
-- [ ] Health Services API — ExerciseClient golf workout (keeps GPS alive when phone is in cart)
+- [x] Health Services API — ExerciseClient golf workout (keeps GPS alive when phone is in cart)
 - [ ] Heart rate sampling → send timeline to phone on round end
 - [ ] Ambient Mode / Always-On Display — high-contrast simplified scoring view
 
