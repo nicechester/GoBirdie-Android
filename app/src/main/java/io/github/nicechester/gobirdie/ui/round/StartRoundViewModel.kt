@@ -197,10 +197,25 @@ class StartRoundViewModel @Inject constructor(
             return courses.first()
         }
 
-        // For API courses, fetch hole data and build course
+        // For API courses, fetch hole data + Overpass GPS geometry
         val apiHoles = golfApi.fetchHoles(item.id)
+        val overpassHoles = try {
+            val nearby = overpass.searchCourses(item.location, 5000)
+            val match = nearby.firstOrNull { it.name.equals(item.name, ignoreCase = true) }
+                ?: nearby.firstOrNull()
+            match?.let { overpass.downloadCourse(it.osmId, item.name, playerLocation) }
+                ?.firstOrNull()?.holes ?: emptyList()
+        } catch (e: Exception) { emptyList() }
         val holes = apiHoles.map { h ->
-            Hole(number = h.number, par = h.par, handicap = h.handicap, yardage = h.yardage.toString())
+            val gpsHole = overpassHoles.firstOrNull { it.number == h.number }
+            Hole(
+                number = h.number, par = h.par, handicap = h.handicap, yardage = h.yardage.toString(),
+                tee = gpsHole?.tee,
+                greenCenter = gpsHole?.greenCenter,
+                greenFront = gpsHole?.greenFront,
+                greenBack = gpsHole?.greenBack,
+                geometry = gpsHole?.geometry,
+            )
         }
         return Course(
             id = "api-${item.id}",
