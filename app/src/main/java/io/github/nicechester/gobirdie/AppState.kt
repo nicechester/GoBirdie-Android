@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.nicechester.gobirdie.connectivity.PhoneDataLayerListenerService
 import io.github.nicechester.gobirdie.connectivity.WearConnectivityService
-import io.github.nicechester.gobirdie.connectivity.WatchActions
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.InProgressSnapshot
 import io.github.nicechester.gobirdie.core.data.InProgressStore
@@ -58,6 +58,9 @@ class AppState @Inject constructor(
 
     init {
         checkForInProgressRound()
+        PhoneDataLayerListenerService.onWatchAction = { action, extras ->
+            handleWatchAction(action, extras)
+        }
     }
 
     fun startRound(course: Course, startingHole: Int = 1): RoundSession {
@@ -138,6 +141,8 @@ class AppState @Inject constructor(
         startAutoSave()
         resetIdleTimer()
         Log.i(TAG, "Resumed round on hole ${snapshot.currentHoleIndex + 1}")
+        sendHoleDataToWatch()
+        observeHoleChanges()
     }
 
     fun discardInProgressRound() {

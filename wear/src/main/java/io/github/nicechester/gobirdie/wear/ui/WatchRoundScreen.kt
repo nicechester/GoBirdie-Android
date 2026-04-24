@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
@@ -17,11 +18,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.wear.compose.foundation.SwipeToDismissBoxState
-import androidx.wear.compose.foundation.edgeSwipeToDismiss
-import androidx.wear.compose.foundation.rememberSwipeToDismissBoxState
 import androidx.wear.compose.material.*
 import io.github.nicechester.gobirdie.wear.WatchRoundSession
+import kotlin.math.abs
 
 private val GolfGreen = Color(0xFF4CAF50)
 private val DarkBg = Color(0xFF000000)
@@ -76,22 +75,32 @@ private fun ActiveRoundPager(session: WatchRoundSession) {
     var page by remember { mutableIntStateOf(0) }
 
     Box(
-        Modifier.fillMaxSize().pointerInput(Unit) {
-            detectHorizontalDragGestures { _, dragAmount ->
-                // Vertical page simulation via horizontal swipe isn't standard,
-                // but we use a simple two-page toggle
+        Modifier
+            .fillMaxSize()
+            .pointerInput(page) {
+                var accumulated = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { accumulated = 0f },
+                    onDragEnd = {
+                        if (accumulated < -60 && page == 0) page = 1
+                        else if (accumulated > 60 && page == 1) page = 0
+                    },
+                    onVerticalDrag = { _, dragAmount -> accumulated += dragAmount },
+                )
             }
-        }
     ) {
         if (page == 0) {
-            ScoringPage(session, onSwipeUp = { page = 1 })
+            ScoringPage(session)
         } else {
             EndRoundPage(session, onBack = { page = 0 })
         }
 
-        // Page indicator dots at bottom
+        // Page indicator dots at bottom — tap to switch
         Row(
-            Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp),
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 4.dp)
+                .clickable { page = if (page == 0) 1 else 0 },
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             PageDot(active = page == 0)
@@ -115,7 +124,7 @@ private fun PageDot(active: Boolean) {
 // ── Scoring Page ──
 
 @Composable
-private fun ScoringPage(session: WatchRoundSession, onSwipeUp: () -> Unit) {
+private fun ScoringPage(session: WatchRoundSession) {
     val holeNum by session.holeNumber.collectAsState()
     val parVal by session.par.collectAsState()
     val strokesVal by session.strokes.collectAsState()
@@ -123,8 +132,10 @@ private fun ScoringPage(session: WatchRoundSession, onSwipeUp: () -> Unit) {
     val front by session.frontYards.collectAsState()
     val pin by session.pinYards.collectAsState()
     val back by session.backYards.collectAsState()
-    val total by remember { derivedStateOf { session.totalStrokes } }
     val totalHolesVal by session.totalHoles.collectAsState()
+
+    // Compute total from accumulated + current strokes
+    val totalDisplay = remember(strokesVal) { session.totalStrokes }
 
     // Rotary input for hole navigation
     var rotaryHole by remember { mutableIntStateOf(holeNum) }
@@ -133,7 +144,8 @@ private fun ScoringPage(session: WatchRoundSession, onSwipeUp: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 12.dp, vertical = 0.dp)
+            .padding(top = 24.dp)
             .onRotaryScrollEvent { event ->
                 val delta = if (event.verticalScrollPixels > 0) 1 else -1
                 val target = (rotaryHole + delta).coerceIn(1, totalHolesVal)
@@ -144,27 +156,26 @@ private fun ScoringPage(session: WatchRoundSession, onSwipeUp: () -> Unit) {
                 true
             }
             .focusable()
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    if (dragAmount > 30) session.previousHole()
-                    else if (dragAmount < -30) session.nextHole()
-                }
+            .pointerInput(holeNum) {
+                var accumulated = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { accumulated = 0f },
+                    onDragEnd = {
+                        if (accumulated > 60) session.previousHole()
+                        else if (accumulated < -60) session.nextHole()
+                    },
+                    onHorizontalDrag = { _, dragAmount -> accumulated += dragAmount },
+                )
             },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Header: Hole # / Par
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Center,
         ) {
-            Text(
-                "Hole $holeNum",
-                fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White,
-            )
-            Text(
-                "Par $parVal",
-                fontSize = 13.sp, color = Color.Gray,
-            )
+            Text("Hole $holeNum", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("  ·  Par $parVal", fontSize = 13.sp, color = Color.Gray)
         }
 
         Spacer(Modifier.height(2.dp))
@@ -175,39 +186,24 @@ private fun ScoringPage(session: WatchRoundSession, onSwipeUp: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.Bottom,
         ) {
-            // Front
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                 Text("F", fontSize = 11.sp, color = Color.Gray)
-                Text(
-                    "${front ?: 0}",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White,
-                )
+                Text("${front ?: 0}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
-            // Pin
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1.5f)) {
                 Text("PIN", fontSize = 13.sp, color = Color.Gray)
-                Text(
-                    "${pin ?: 0}",
-                    fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GolfGreen,
-                )
+                Text("${pin ?: 0}", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GolfGreen)
             }
-            // Back
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                 Text("B", fontSize = 11.sp, color = Color.Gray)
-                Text(
-                    "${back ?: 0}",
-                    fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White,
-                )
+                Text("${back ?: 0}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
 
         Spacer(Modifier.height(2.dp))
 
         // Strokes / Putts
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("$strokesVal", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Text("Strokes", fontSize = 10.sp, color = Color.Gray)
@@ -221,10 +217,7 @@ private fun ScoringPage(session: WatchRoundSession, onSwipeUp: () -> Unit) {
         Spacer(Modifier.height(4.dp))
 
         // Buttons: Shot + Putt
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             CompactChip(
                 onClick = { session.markShot() },
                 label = { Text("Shot", fontSize = 12.sp) },
@@ -249,18 +242,13 @@ private fun ScoringPage(session: WatchRoundSession, onSwipeUp: () -> Unit) {
 private fun EndRoundPage(session: WatchRoundSession, onBack: () -> Unit) {
     val holeNum by session.holeNumber.collectAsState()
     val totalHolesVal by session.totalHoles.collectAsState()
-    val total by remember { derivedStateOf { session.totalStrokes } }
+    val strokesVal by session.strokes.collectAsState()
+    val totalDisplay = remember(strokesVal) { session.totalStrokes }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                "$total",
-                fontSize = 44.sp, fontWeight = FontWeight.Bold, color = Color.White,
-            )
-            Text(
-                "Hole $holeNum of $totalHolesVal",
-                fontSize = 13.sp, color = Color.Gray,
-            )
+            Text("$totalDisplay", fontSize = 44.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text("Hole $holeNum of $totalHolesVal", fontSize = 13.sp, color = Color.Gray)
             Spacer(Modifier.height(12.dp))
             Chip(
                 onClick = { session.finishRound() },
@@ -272,8 +260,7 @@ private fun EndRoundPage(session: WatchRoundSession, onBack: () -> Unit) {
             Spacer(Modifier.height(8.dp))
             Text(
                 "Cancel Round",
-                fontSize = 12.sp,
-                color = Color.Gray,
+                fontSize = 12.sp, color = Color.Gray,
                 modifier = Modifier.clickable { session.cancelRound() },
             )
         }
@@ -285,21 +272,15 @@ private fun EndRoundPage(session: WatchRoundSession, onBack: () -> Unit) {
 @Composable
 private fun RoundEndedView(session: WatchRoundSession) {
     val name by session.courseName.collectAsState()
-    val total by remember { derivedStateOf { session.totalStrokes } }
+    val strokesVal by session.strokes.collectAsState()
+    val totalDisplay = remember(strokesVal) { session.totalStrokes }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("⛳", fontSize = 28.sp)
             Spacer(Modifier.height(4.dp))
-            Text(
-                name,
-                fontSize = 11.sp, color = Color.Gray,
-                textAlign = TextAlign.Center, maxLines = 2,
-            )
-            Text(
-                "$total",
-                fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White,
-            )
+            Text(name, fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center, maxLines = 2)
+            Text("$totalDisplay", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Text("Round Saved", fontSize = 13.sp, color = Color.Gray)
             Spacer(Modifier.height(8.dp))
             CompactChip(
@@ -321,7 +302,6 @@ private fun ClubPickerOverlay(session: WatchRoundSession) {
         mutableIntStateOf(clubs.indexOf(selected).coerceAtLeast(0))
     }
 
-    // Sync selection back to session
     LaunchedEffect(currentIndex) {
         if (clubs.indices.contains(currentIndex)) {
             session.selectedClub.value = clubs[currentIndex]
@@ -338,32 +318,33 @@ private fun ClubPickerOverlay(session: WatchRoundSession) {
                 true
             }
             .focusable()
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    if (dragAmount > 20 && currentIndex > 0) currentIndex--
-                    else if (dragAmount < -20 && currentIndex < clubs.size - 1) currentIndex++
-                }
+            .pointerInput(clubs) {
+                var accumulated = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { accumulated = 0f },
+                    onDragEnd = {
+                        if (accumulated > 40 && currentIndex > 0) currentIndex--
+                        else if (accumulated < -40 && currentIndex < clubs.size - 1) currentIndex++
+                    },
+                    onHorizontalDrag = { _, dragAmount -> accumulated += dragAmount },
+                )
             },
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            // Carousel: prev / current / next
             Row(
                 Modifier.fillMaxWidth().height(50.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Previous
                 Text(
                     if (currentIndex > 0) clubDisplayName(clubs[currentIndex - 1]) else "",
                     fontSize = 13.sp, color = Color.Gray.copy(alpha = 0.5f),
                 )
-                // Current
                 Text(
                     clubDisplayName(clubs.getOrElse(currentIndex) { "?" }),
                     fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GolfGreen,
                 )
-                // Next
                 Text(
                     if (currentIndex < clubs.size - 1) clubDisplayName(clubs[currentIndex + 1]) else "",
                     fontSize = 13.sp, color = Color.Gray.copy(alpha = 0.5f),
@@ -382,12 +363,12 @@ private fun ClubPickerOverlay(session: WatchRoundSession) {
 }
 
 private fun clubDisplayName(raw: String): String = when (raw) {
-    "driver" -> "Driver"
+    "driver" -> "DR"
     "3w" -> "3W"; "5w" -> "5W"
     "3h" -> "3H"; "4h" -> "4H"; "5h" -> "5H"
     "4i" -> "4i"; "5i" -> "5i"; "6i" -> "6i"
     "7i" -> "7i"; "8i" -> "8i"; "9i" -> "9i"
     "pw" -> "PW"; "gw" -> "GW"; "sw" -> "SW"; "lw" -> "LW"
-    "putter" -> "Putter"
-    else -> raw
+    "putter" -> "PT"
+    else -> raw.uppercase()
 }

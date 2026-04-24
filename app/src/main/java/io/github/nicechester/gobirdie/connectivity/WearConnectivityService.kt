@@ -29,7 +29,11 @@ class WearConnectivityService(private val context: Context) {
             put("courseName", courseName)
             put("totalStrokes", totalStrokes)
             put("totalHoles", totalHoles)
-            putJsonArray("clubBag") { enabledClubs.forEach { add(it.name.lowercase()) } }
+            putJsonArray("clubBag") {
+                enabledClubs.forEach { club ->
+                    add(club.serialName)
+                }
+            }
             hole.tee?.let { put("tee_lat", it.lat); put("tee_lon", it.lon) }
             hole.greenCenter?.let { put("green_lat", it.lat); put("green_lon", it.lon) }
             hole.greenFront?.let { put("front_lat", it.lat); put("front_lon", it.lon) }

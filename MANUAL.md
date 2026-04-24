@@ -8,8 +8,9 @@
 4. [Putting & Finishing a Hole](#4-putting--finishing-a-hole)
 5. [Reviewing Scorecards](#5-reviewing-scorecards)
 6. [Settings](#6-settings)
-7. [Exploring Courses](#7-exploring-courses)
-8. [Tips](#tips)
+7. [Wear OS Watch](#7-wear-os-watch)
+8. [Exploring Courses](#8-exploring-courses)
+9. [Tips](#tips)
 
 ---
 
@@ -207,7 +208,57 @@ Toggle clubs on or off to match your actual bag. The club list is used when mark
 
 ---
 
-## 7. Exploring Courses
+## 7. Wear OS Watch
+
+The Wear OS app works as a companion to the phone — it receives hole data via the Data Layer API and provides quick distance checks and shot tracking from your wrist.
+
+<table>
+<tr><td valign="top"><img src="screenshots/watch-rounding.png" width="160"></td><td valign="top" width="60%">
+
+### Step 19: Distances & Shot Tracking
+
+When you start a round on the phone, the watch displays live distances to the **Front**, **Pin**, and **Back** of the green, updated continuously from the watch's onboard GPS. Below the distances, your current **Strokes** and **Putts** are shown. Use the buttons to:
+- **Shot** — mark a shot at your current GPS location (opens club selection)
+- **+1 Putt** — add a putt to the current hole
+
+Swipe or use the rotating crown to navigate between holes. Stroke and putt counts sync automatically with the phone.
+
+</td></tr>
+</table>
+
+<table>
+<tr><td valign="top" width="60%">
+
+### Step 20: Club Selection on Watch
+
+After tapping **Shot**, a club picker overlay appears. Scroll through your clubs using the rotating crown or swipe, then tap to confirm. The selected club is recorded with the shot and synced to the phone.
+
+</td><td valign="top"><img src="screenshots/watch-select-club.png" width="160"></td></tr>
+</table>
+
+<table>
+<tr><td valign="top"><img src="screenshots/watch-second-page.png" width="160"></td><td valign="top" width="60%">
+
+### Step 21: End the Round
+
+Swipe to the second page to see your total score and access **End Round** or **Cancel Round**.
+
+</td></tr>
+</table>
+
+<table>
+<tr><td valign="top" width="60%">
+
+### Step 22: Round Saved
+
+After ending the round, the watch confirms the save with your final score. The round data is sent back to the phone.
+
+</td><td valign="top"><img src="screenshots/watch-round-saved.png" width="160"></td></tr>
+</table>
+
+---
+
+## 8. Exploring Courses
 
 Browse course layouts without tracking a round. This is useful to use the app as a course map and range finder only.
 

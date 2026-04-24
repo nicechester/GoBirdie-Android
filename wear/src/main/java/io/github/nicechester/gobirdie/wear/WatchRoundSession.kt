@@ -10,6 +10,7 @@ import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.GpsPoint
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.*
 import java.util.Timer
 import kotlin.concurrent.schedule
@@ -53,26 +54,26 @@ class WatchRoundSession(private val context: Context) {
     // ── Public API ──
 
     fun markShot() {
-        strokes.value++
+        strokes.update { it + 1 }
         sendShotToPhone()
         showClubPickerAfterShot()
     }
 
     fun addStroke() {
-        strokes.value++
+        strokes.update { it + 1 }
         sendStrokesToPhone()
     }
 
     fun addPutt() {
-        putts.value++
-        strokes.value++
+        putts.update { it + 1 }
+        strokes.update { it + 1 }
         sendStrokesToPhone()
     }
 
     fun removePutt() {
         if (putts.value <= 0) return
-        putts.value--
-        strokes.value--
+        putts.update { it - 1 }
+        strokes.update { it - 1 }
         sendStrokesToPhone()
     }
 
