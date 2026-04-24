@@ -43,6 +43,9 @@ class WearActivity : ComponentActivity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.BODY_SENSORS)
             != PackageManager.PERMISSION_GRANTED
         ) needed.add(Manifest.permission.BODY_SENSORS)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACTIVITY_RECOGNITION)
+            != PackageManager.PERMISSION_GRANTED
+        ) needed.add(Manifest.permission.ACTIVITY_RECOGNITION)
         if (needed.isNotEmpty()) permissionLauncher.launch(needed.toTypedArray())
     }
 }

@@ -47,6 +47,7 @@ class WatchRoundSession(private val context: Context) {
     private var fusedClient: FusedLocationProviderClient? = null
     private var locationCallback: LocationCallback? = null
     private var isActive = false
+    private var exerciseServiceStarted = false
 
     // Club picker auto-dismiss timer
     private var clubPickerTimer: Timer? = null
@@ -107,12 +108,14 @@ class WatchRoundSession(private val context: Context) {
     fun finishRound() {
         accumulatedStrokes += strokes.value
         stopLocation()
+        stopExerciseService()
         isRoundEnded.value = true
         sendEndRoundToPhone()
     }
 
     fun cancelRound() {
         stopLocation()
+        stopExerciseService()
         sendCancelRoundToPhone()
         resetToWaiting()
     }
@@ -202,6 +205,10 @@ class WatchRoundSession(private val context: Context) {
         recomputeDistances()
 
         if (!isActive) startLocation()
+        if (!exerciseServiceStarted) {
+            exerciseServiceStarted = true
+            ExerciseService.start(context)
+        }
     }
 
     // ── Distance computation ──
@@ -240,6 +247,24 @@ class WatchRoundSession(private val context: Context) {
         locationCallback = null
         fusedClient = null
         isActive = false
+    }
+
+    // Called by ExerciseService with Health Services GPS data
+    fun onExerciseLocation(lat: Double, lon: Double, altitude: Double) {
+        val loc = Location("exercise").apply {
+            latitude = lat
+            longitude = lon
+            this.altitude = altitude
+        }
+        currentLocation = loc
+        recomputeDistances()
+    }
+
+    private fun stopExerciseService() {
+        if (exerciseServiceStarted) {
+            exerciseServiceStarted = false
+            ExerciseService.stop(context)
+        }
     }
 
     // ── Club picker ──
