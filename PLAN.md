@@ -284,22 +284,22 @@ dependencies {
 - [x] About section (version, GitHub, attribution)
 - [x] Orientation lock during round
 
-### M6 — Wear OS Watch (Week 7-8)
-- [ ] Wear OS module (`wear/`) with Compose for Wear OS + Horologist
-- [ ] Data Layer API bridge (phone ↔ watch messaging, replaces WatchConnectivity)
+### M6 — Wear OS Watch (Week 7-8) ✅
+- [x] Wear OS module (`wear/`) with Compose for Wear OS
+- [x] Data Layer API bridge (phone ↔ watch messaging, replaces WatchConnectivity)
   - Phone → Watch: hole coordinates, par, course name, club bag, stroke updates
-  - Watch → Phone: shot (with GPS + heart rate), stroke/putt counts, club selection, navigate, end/cancel
-- [ ] WatchRoundSession — hole number, par, strokes, putts, club bag state
-- [ ] GPS distances on wrist (front/pin/back yards via watch's onboard GPS)
-- [ ] Mark Shot button + club picker overlay (rotary scroll, auto-dismiss after 10s)
-- [ ] Add Stroke / Add Putt / Remove Putt controls
-- [ ] Hole navigation (swipe left/right, rotary input for crown/bezel)
-- [ ] End Round / Cancel Round page
-- [ ] Round Ended confirmation screen
+  - Watch → Phone: shot (with GPS), stroke/putt counts, club selection, navigate, end/cancel
+- [x] WatchRoundSession — hole number, par, strokes, putts, club bag state
+- [x] GPS distances on wrist (front/pin/back yards via watch's onboard GPS)
+- [x] Mark Shot button + club picker overlay (rotary/swipe scroll, auto-dismiss)
+- [x] Add Stroke / Add Putt / Remove Putt controls
+- [x] Hole navigation (vertical swipe, tappable page dots)
+- [x] End Round / Cancel Round page
+- [x] Round Ended confirmation screen
+- [x] Watch screenshots added to MANUAL.md
 - [ ] Health Services API — ExerciseClient golf workout (keeps GPS alive when phone is in cart)
 - [ ] Heart rate sampling → send timeline to phone on round end
 - [ ] Ambient Mode / Always-On Display — high-contrast simplified scoring view
-- [ ] Standalone capability — watch GPS works independently of phone
 
 ### M7 — Desktop Sync (Week 8-9)
 - [ ] HTTP sync server on Android (NanoHTTPD or Ktor embedded server)
