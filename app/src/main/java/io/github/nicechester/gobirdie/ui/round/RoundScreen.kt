@@ -94,6 +94,7 @@ fun RoundScreen(appState: AppState) {
         val vm: StartRoundViewModel = hiltViewModel()
 
         LaunchedEffect(Unit) {
+            vm.reset()
             vm.loadWithLocation(null)
         }
         LaunchedEffect(playerLocation) {

@@ -284,7 +284,7 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                                 apiClient.searchCourses(searchText.trim(), GpsPoint(34.0, -118.0))
                             }
                             searchResults = results.map { r ->
-                                SearchResult(id = r.id, name = r.name, city = r.city)
+                                SearchResult(id = r.id, name = r.name, city = r.city, location = r.location)
                             }
                             if (results.isEmpty()) errorMessage = "No courses found for \"${searchText.trim()}\""
                         } catch (e: Exception) {
@@ -343,19 +343,37 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                                             val apiHoles = withContext(Dispatchers.IO) {
                                                 apiClient.fetchHoles(result.id, teeColor.lowercase())
                                             }
+                                            // Fetch GPS geometry from Overpass by name
+                                            val overpassCourses = withContext(Dispatchers.IO) {
+                                                try {
+                                                    val overpass = io.github.nicechester.gobirdie.core.data.api.OverpassClient()
+                                                    val nearby = overpass.searchCourses(result.location, 5000)
+                                                    val match = nearby.firstOrNull { it.name.equals(result.name, ignoreCase = true) }
+                                                        ?: nearby.firstOrNull()
+                                                    match?.let { overpass.downloadCourse(it.osmId, it.name) }
+                                                } catch (e: Exception) { null }
+                                            }
+                                            val overpassHoles = overpassCourses?.firstOrNull()?.holes ?: emptyList()
                                             val holes = apiHoles.map { h ->
+                                                val gpsHole = overpassHoles.firstOrNull { it.number == h.number }
                                                 io.github.nicechester.gobirdie.core.model.Hole(
                                                     id = java.util.UUID.randomUUID().toString(),
                                                     number = h.number,
                                                     par = h.par,
                                                     handicap = h.handicap,
                                                     yardage = h.yardage.toString(),
+                                                    tee = gpsHole?.tee,
+                                                    greenCenter = gpsHole?.greenCenter,
+                                                    greenFront = gpsHole?.greenFront,
+                                                    greenBack = gpsHole?.greenBack,
+                                                    geometry = gpsHole?.geometry,
                                                 )
                                             }
+                                            val courseLocation = overpassCourses?.firstOrNull()?.location ?: GpsPoint(0.0, 0.0)
                                             val course = Course(
                                                 id = java.util.UUID.randomUUID().toString(),
                                                 name = result.name,
-                                                location = GpsPoint(0.0, 0.0),
+                                                location = courseLocation,
                                                 holes = holes,
                                                 golfCourseApiId = result.id,
                                             )
@@ -417,7 +435,7 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
     }
 }
 
-private data class SearchResult(val id: Int, val name: String, val city: String)
+private data class SearchResult(val id: Int, val name: String, val city: String, val location: GpsPoint = GpsPoint(0.0, 0.0))
 
 // ─── My Clubs ───────────────────────────────────────────────────────
 

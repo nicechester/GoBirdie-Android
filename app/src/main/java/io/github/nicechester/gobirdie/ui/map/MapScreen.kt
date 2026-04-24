@@ -129,7 +129,11 @@ private fun ExploreCoursePicker(
     val vm: StartRoundViewModel = hiltViewModel()
     val playerLocation by appState.locationService.location.collectAsState()
 
-    LaunchedEffect(Unit) { vm.loadWithLocation(null) }
+    LaunchedEffect(Unit) {
+        appState.locationService.start()
+        vm.reset()
+        vm.loadWithLocation(null)
+    }
     LaunchedEffect(playerLocation) {
         if (playerLocation != null) vm.onLocationReceived(playerLocation!!)
     }
@@ -137,7 +141,11 @@ private fun ExploreCoursePicker(
     StartRoundScreen(
         viewModel = vm,
         onStartRound = { course, _ -> onCourseSelected(course) },
-        onDismiss = onCancel,
+        onDismiss = {
+            appState.locationService.stop()
+            onCancel()
+        },
+        title = "Explore Courses",
     )
 }
 
@@ -284,8 +292,8 @@ private fun CourseMapView(
     LaunchedEffect(holeIndex, styleLoaded) {
         val map = mapLibreMap ?: return@LaunchedEffect
         if (!styleLoaded) return@LaunchedEffect
-        animateToHole(map, hole, course)
         updateGolfLayers(map, hole)
+        animateToHole(map, hole, course)
         tapPoint = null
     }
 
@@ -296,6 +304,8 @@ private fun CourseMapView(
                 MapLibre.getInstance(ctx)
                 val mv = MapView(ctx)
                 mv.onCreate(null)
+                mv.onStart()
+                mv.onResume()
                 mv.getMapAsync { mlMap ->
                     mapLibreMap = mlMap
                     mlMap.setStyle(Style.Builder().fromUri(osmStyleUri(ctx))) { _ ->
@@ -312,7 +322,11 @@ private fun CourseMapView(
                 mv
             },
             modifier = Modifier.fillMaxSize(),
-            onRelease = { it.onDestroy() },
+            onRelease = {
+                it.onPause()
+                it.onStop()
+                it.onDestroy()
+            },
         )
 
         // Compose overlay for dots and lines

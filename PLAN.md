@@ -244,7 +244,7 @@ dependencies {
 - [x] Course manager (search, download, delete with swipe)
 - [x] Tip jar (Venmo link)
 - [x] About section (version, GitHub, attribution)
-- [x] Orientation lock during round
+- [ ] Orientation lock during round
 
 ### M6 — Release Prep (Week 6)
 - [x] GitHub Actions CI workflow (android.yml)

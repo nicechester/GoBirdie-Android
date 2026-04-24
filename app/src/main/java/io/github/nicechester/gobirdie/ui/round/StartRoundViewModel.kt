@@ -147,7 +147,7 @@ class StartRoundViewModel @Inject constructor(
                 }
                 _state.value = StartRoundUiState.CourseList(items, isSearchingOnline = false)
             } catch (e: Exception) {
-                _state.value = StartRoundUiState.Error("Search failed: ${e.message}")
+                _state.value = StartRoundUiState.CourseList(emptyList(), isSearchingOnline = false)
             }
         }
     }
@@ -178,9 +178,14 @@ class StartRoundViewModel @Inject constructor(
         _selectedCourse.value = course to startingHole
     }
 
+    fun reset() {
+        _selectedCourse.value = null
+        _searchText.value = ""
+        playerLocation = null
+    }
+
     fun retry() {
-        playerLocation?.let { loadWithLocation(it) }
-            ?: run { _state.value = StartRoundUiState.Error("Location not available") }
+        loadWithLocation(playerLocation)
     }
 
     private suspend fun downloadCourse(item: CourseItem): Course {

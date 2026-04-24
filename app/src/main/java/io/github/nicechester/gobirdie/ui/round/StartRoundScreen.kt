@@ -26,6 +26,7 @@ fun StartRoundScreen(
     viewModel: StartRoundViewModel,
     onStartRound: (Course, Int) -> Unit,
     onDismiss: () -> Unit,
+    title: String = "Start a Round",
 ) {
     val state by viewModel.state.collectAsState()
     val searchText by viewModel.searchText.collectAsState()
@@ -38,7 +39,7 @@ fun StartRoundScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Start a Round") },
+                title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, "Close")
