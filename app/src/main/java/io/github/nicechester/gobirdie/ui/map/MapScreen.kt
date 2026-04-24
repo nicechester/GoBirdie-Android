@@ -127,15 +127,15 @@ private fun ExploreCoursePicker(
     onCancel: () -> Unit,
 ) {
     val vm: StartRoundViewModel = hiltViewModel()
-    val playerLocation by appState.locationService.location.collectAsState()
 
     LaunchedEffect(Unit) {
-        appState.locationService.start()
         vm.reset()
+        appState.locationService.start()
         vm.loadWithLocation(null)
-    }
-    LaunchedEffect(playerLocation) {
-        if (playerLocation != null) vm.onLocationReceived(playerLocation!!)
+        // Collect location updates sequentially after init
+        appState.locationService.location.collect { loc ->
+            if (loc != null) vm.onLocationReceived(loc)
+        }
     }
 
     StartRoundScreen(
