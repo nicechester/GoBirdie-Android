@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.os.Looper
-import io.github.nicechester.gobirdie.wear.BuildConfig
 import com.google.android.gms.location.*
 import com.google.android.gms.wearable.*
 import io.github.nicechester.gobirdie.core.model.ClubType
