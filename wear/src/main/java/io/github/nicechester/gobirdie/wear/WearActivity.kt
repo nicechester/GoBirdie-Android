@@ -6,12 +6,24 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
+import androidx.wear.ambient.AmbientLifecycleObserver
 import io.github.nicechester.gobirdie.wear.ui.WatchRoundScreen
 
 class WearActivity : ComponentActivity() {
 
     private lateinit var session: WatchRoundSession
+    val isAmbient = mutableStateOf(false)
+
+    private val ambientCallback = object : AmbientLifecycleObserver.AmbientLifecycleCallback {
+        override fun onEnterAmbient(ambientDetails: AmbientLifecycleObserver.AmbientDetails) {
+            isAmbient.value = true
+        }
+        override fun onExitAmbient() {
+            isAmbient.value = false
+        }
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -20,13 +32,15 @@ class WearActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        lifecycle.addObserver(AmbientLifecycleObserver(this, ambientCallback))
+
         session = WatchRoundSession(applicationContext)
         WearSessionHolder.session = session
 
         requestPermissionsIfNeeded()
 
         setContent {
-            WatchRoundScreen(session)
+            WatchRoundScreen(session, isAmbient.value)
         }
     }
 
