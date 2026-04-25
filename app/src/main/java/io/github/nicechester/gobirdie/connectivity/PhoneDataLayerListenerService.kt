@@ -32,6 +32,21 @@ class PhoneDataLayerListenerService : WearableListenerService() {
             obj["lon"]?.jsonPrimitive?.doubleOrNull?.let { extras["lon"] = it }
             obj["altitude"]?.jsonPrimitive?.doubleOrNull?.let { extras["altitude"] = it }
             obj["club"]?.jsonPrimitive?.content?.let { extras["club"] = it }
+            obj["heartRate"]?.jsonPrimitive?.intOrNull?.let { extras["heartRate"] = it }
+            obj["heartRateTimeline"]?.let { element ->
+                // Timeline is sent as a JSON array string
+                try {
+                    val arr = Json.parseToJsonElement(element.jsonPrimitive.content).jsonArray
+                    extras["heartRateTimeline"] = arr.map { sample ->
+                        val s = sample.jsonObject
+                        mapOf(
+                            "timestamp" to (s["timestamp"]?.jsonPrimitive?.doubleOrNull ?: 0.0),
+                            "bpm" to (s["bpm"]?.jsonPrimitive?.intOrNull ?: 0),
+                            "altitude" to s["altitude"]?.jsonPrimitive?.doubleOrNull,
+                        )
+                    }
+                } catch (_: Exception) {}
+            }
 
             Log.d(TAG, "Dispatching watch action: $action extras=$extras")
             onWatchAction?.invoke(action, extras)

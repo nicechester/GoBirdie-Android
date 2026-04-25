@@ -26,7 +26,7 @@ private val GolfGreen = Color(0xFF4CAF50)
 private val DarkBg = Color(0xFF000000)
 
 @Composable
-fun WatchRoundScreen(session: WatchRoundSession) {
+fun WatchRoundScreen(session: WatchRoundSession, isAmbient: Boolean = false) {
     val hasHoleData by session.hasHoleData.collectAsState()
     val isRoundEnded by session.isRoundEnded.collectAsState()
     val showClubPicker by session.showClubPicker.collectAsState()
@@ -34,14 +34,45 @@ fun WatchRoundScreen(session: WatchRoundSession) {
     MaterialTheme {
         Box(Modifier.fillMaxSize().background(DarkBg)) {
             when {
+                isAmbient && hasHoleData && !isRoundEnded -> AmbientScoringView(session)
                 isRoundEnded -> RoundEndedView(session)
                 hasHoleData -> ActiveRoundPager(session)
                 else -> WaitingView(session)
             }
 
-            if (showClubPicker) {
+            if (showClubPicker && !isAmbient) {
                 ClubPickerOverlay(session)
             }
+        }
+    }
+}
+
+// ── Ambient Mode (Always-On Display) ──
+
+@Composable
+private fun AmbientScoringView(session: WatchRoundSession) {
+    val holeNum by session.holeNumber.collectAsState()
+    val parVal by session.par.collectAsState()
+    val pin by session.pinYards.collectAsState()
+    val strokesVal by session.strokes.collectAsState()
+
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "H$holeNum  P$parVal",
+                fontSize = 14.sp, color = Color.White,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "${pin ?: "--"}",
+                fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White,
+            )
+            Text("yds", fontSize = 12.sp, color = Color.Gray)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "$strokesVal strokes",
+                fontSize = 14.sp, color = Color.Gray,
+            )
         }
     }
 }

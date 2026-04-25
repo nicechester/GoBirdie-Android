@@ -231,7 +231,8 @@ class AppState @Inject constructor(
                 val clubRaw = extras["club"] as? String
                 val club = ClubType.entries.firstOrNull { it.name.equals(clubRaw, ignoreCase = true) } ?: ClubType.UNKNOWN
                 val altitude = extras["altitude"] as? Double
-                session.markShot(loc, club, altitudeMeters = altitude)
+                val heartRate = extras["heartRate"] as? Int
+                session.markShot(loc, club, altitudeMeters = altitude, heartRateBpm = heartRate)
                 resetIdleTimer()
             }
             "stroke" -> {
@@ -246,7 +247,23 @@ class AppState @Inject constructor(
                 session.navigateTo(holeNumber)
                 resetIdleTimer()
             }
-            "endRound" -> endActiveRound()
+            "endRound" -> {
+                @Suppress("UNCHECKED_CAST")
+                val timeline = extras["heartRateTimeline"] as? List<Map<String, Any?>>
+                if (!timeline.isNullOrEmpty()) {
+                    val samples = timeline.mapNotNull { m ->
+                        val ts = m["timestamp"] as? Double ?: return@mapNotNull null
+                        val bpm = m["bpm"] as? Int ?: return@mapNotNull null
+                        HeartRateSample(
+                            timestamp = Instant.ofEpochSecond(ts.toLong()).toString(),
+                            bpm = bpm,
+                            altitudeMeters = m["altitude"] as? Double,
+                        )
+                    }
+                    session.setHeartRateTimeline(samples)
+                }
+                endActiveRound()
+            }
             "cancelRound" -> cancelActiveRound()
             "clubSelection" -> {
                 // Watch selected a club for the last shot — update it

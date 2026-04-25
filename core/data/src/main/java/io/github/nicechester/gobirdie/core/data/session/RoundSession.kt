@@ -23,7 +23,7 @@ class RoundSession(
     val currentHole: HoleScore?
         get() = _round.value.holes.getOrNull(_currentHoleIndex.value)
 
-    fun markShot(location: GpsPoint, club: ClubType = ClubType.UNKNOWN, distanceToPinYards: Int? = null, altitudeMeters: Double? = null) {
+    fun markShot(location: GpsPoint, club: ClubType = ClubType.UNKNOWN, distanceToPinYards: Int? = null, altitudeMeters: Double? = null, heartRateBpm: Int? = null) {
         update { holes ->
             val idx = _currentHoleIndex.value
             val hole = holes[idx]
@@ -34,6 +34,7 @@ class RoundSession(
                 club = club,
                 distanceToPinYards = distanceToPinYards,
                 altitudeMeters = altitudeMeters,
+                heartRateBpm = heartRateBpm,
             )
             holes[idx] = hole.copy(
                 shots = hole.shots + shot,
@@ -104,6 +105,10 @@ class RoundSession(
             holesPlayed = r.holes.count { it.strokes > 0 },
         )
         _isComplete.value = true
+    }
+
+    fun setHeartRateTimeline(samples: List<HeartRateSample>) {
+        _round.value = _round.value.copy(heartRateTimeline = samples)
     }
 
     fun snapshot(): Round = _round.value

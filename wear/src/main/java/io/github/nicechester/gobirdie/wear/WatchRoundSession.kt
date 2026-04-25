@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.os.Looper
+import io.github.nicechester.gobirdie.wear.BuildConfig
 import com.google.android.gms.location.*
 import com.google.android.gms.wearable.*
 import io.github.nicechester.gobirdie.core.model.ClubType
@@ -37,6 +38,10 @@ class WatchRoundSession(private val context: Context) {
     private var accumulatedStrokes = 0
     val totalStrokes: Int get() = accumulatedStrokes + strokes.value
 
+    // Heart rate
+    val latestHeartRate = MutableStateFlow<Int?>(null)
+    private val heartRateSamples = mutableListOf<Map<String, Any>>()
+
     // Green coordinates for distance computation
     private var greenFront: GpsPoint? = null
     private var greenCenter: GpsPoint? = null
@@ -47,6 +52,7 @@ class WatchRoundSession(private val context: Context) {
     private var fusedClient: FusedLocationProviderClient? = null
     private var locationCallback: LocationCallback? = null
     private var isActive = false
+    private var exerciseServiceStarted = false
 
     // Club picker auto-dismiss timer
     private var clubPickerTimer: Timer? = null
@@ -107,12 +113,14 @@ class WatchRoundSession(private val context: Context) {
     fun finishRound() {
         accumulatedStrokes += strokes.value
         stopLocation()
+        stopExerciseService()
         isRoundEnded.value = true
         sendEndRoundToPhone()
     }
 
     fun cancelRound() {
         stopLocation()
+        stopExerciseService()
         sendCancelRoundToPhone()
         resetToWaiting()
     }
@@ -133,6 +141,9 @@ class WatchRoundSession(private val context: Context) {
         greenFront = null
         greenCenter = null
         greenBack = null
+        latestHeartRate.value = null
+        heartRateSamples.clear()
+        hasExerciseLocation = false
         dismissClubPicker()
         clubBag.value = emptyList()
     }
@@ -202,6 +213,10 @@ class WatchRoundSession(private val context: Context) {
         recomputeDistances()
 
         if (!isActive) startLocation()
+        if (!exerciseServiceStarted) {
+            exerciseServiceStarted = true
+            if (!BuildConfig.DEBUG) ExerciseService.start(context)
+        }
     }
 
     // ── Distance computation ──
@@ -225,6 +240,7 @@ class WatchRoundSession(private val context: Context) {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000).build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
+                if (hasExerciseLocation) return  // Health Services has taken over
                 result.lastLocation?.let {
                     currentLocation = it
                     recomputeDistances()
@@ -240,6 +256,37 @@ class WatchRoundSession(private val context: Context) {
         locationCallback = null
         fusedClient = null
         isActive = false
+    }
+
+    private var hasExerciseLocation = false
+
+    // Called by ExerciseService with Health Services GPS data
+    fun onExerciseLocation(lat: Double, lon: Double, altitude: Double) {
+        hasExerciseLocation = true
+        val loc = Location("exercise").apply {
+            latitude = lat
+            longitude = lon
+            this.altitude = altitude
+        }
+        currentLocation = loc
+        recomputeDistances()
+    }
+
+    fun onHeartRateUpdate(bpm: Int) {
+        latestHeartRate.value = bpm
+        val sample = mutableMapOf<String, Any>(
+            "timestamp" to (System.currentTimeMillis() / 1000.0),
+            "bpm" to bpm,
+        )
+        currentLocation?.let { if (it.hasAltitude()) sample["altitude"] = it.altitude }
+        heartRateSamples.add(sample)
+    }
+
+    private fun stopExerciseService() {
+        if (exerciseServiceStarted) {
+            exerciseServiceStarted = false
+            ExerciseService.stop(context)
+        }
     }
 
     // ── Club picker ──
@@ -303,6 +350,7 @@ class WatchRoundSession(private val context: Context) {
             msg["lon"] = it.longitude
             if (it.hasAltitude()) msg["altitude"] = it.altitude
         }
+        latestHeartRate.value?.let { msg["heartRate"] = it }
         sendToPhone("/watch/action", msg)
     }
 
@@ -323,7 +371,25 @@ class WatchRoundSession(private val context: Context) {
     }
 
     private fun sendEndRoundToPhone() {
-        sendToPhone("/watch/action", mapOf("action" to "endRound"))
+        val msg = mutableMapOf<String, Any>("action" to "endRound")
+        if (heartRateSamples.isNotEmpty()) {
+            // Serialize timeline as JSON array string since sendToPhone only handles primitives
+            val timeline = buildJsonArray {
+                heartRateSamples.forEach { sample ->
+                    add(buildJsonObject {
+                        sample.forEach { (k, v) ->
+                            when (v) {
+                                is Int -> put(k, v)
+                                is Double -> put(k, v)
+                                is String -> put(k, v)
+                            }
+                        }
+                    })
+                }
+            }.toString()
+            msg["heartRateTimeline"] = timeline
+        }
+        sendToPhone("/watch/action", msg)
     }
 
     private fun sendCancelRoundToPhone() {
