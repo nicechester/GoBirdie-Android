@@ -301,15 +301,14 @@ dependencies {
 - [x] Heart rate sampling → send timeline to phone on round end
 - [x] Ambient Mode / Always-On Display — high-contrast simplified scoring view
 
-### M7 — Desktop Sync (Week 8-9)
-- [ ] HTTP sync server on Android (NanoHTTPD or Ktor embedded server)
-- [ ] `GET /api/rounds` — return round summaries JSON (same format as iOS `list` command)
-- [ ] `GET /api/rounds/:id` — return full round JSON (same format as iOS `round:` command)
-- [ ] mDNS/NSD service advertisement (`_gobirdie._tcp`) for desktop auto-discovery
-- [ ] Settings toggle to start/stop sync server
-- [ ] Desktop app: add HTTP transport alongside MultipeerConnectivity helper
-- [ ] WiFi-only guard (don't serve over mobile data)
-- [ ] Evaluate Nearby Connections API as alternative transport (cross-platform P2P, no WiFi required)
+### M7 — Desktop Sync (Week 8-9) ✅
+- [x] HTTP sync server on Android (NanoHTTPD)
+- [x] `GET /api/rounds` — return round summaries JSON (same format as iOS `list` command)
+- [x] `GET /api/rounds/:id` — return full round JSON (same format as iOS `round:` command)
+- [x] mDNS/NSD service advertisement (`_gobirdie._tcp`) for desktop auto-discovery
+- [x] Settings toggle to start/stop sync server
+- [x] Desktop app: add HTTP transport + mDNS discovery (reqwest + mdns-sd)
+- [x] WiFi-only guard (don't serve over mobile data)
 
 ### M8 — Release Prep (Week 10)
 - [x] GitHub Actions CI workflow (android.yml)
