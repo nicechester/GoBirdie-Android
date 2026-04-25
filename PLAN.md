@@ -299,7 +299,7 @@ dependencies {
 - [x] Watch screenshots added to MANUAL.md
 - [x] Health Services API — ExerciseClient golf workout (keeps GPS alive when phone is in cart)
 - [x] Heart rate sampling → send timeline to phone on round end
-- [ ] Ambient Mode / Always-On Display — high-contrast simplified scoring view
+- [x] Ambient Mode / Always-On Display — high-contrast simplified scoring view
 
 ### M7 — Desktop Sync (Week 8-9)
 - [ ] HTTP sync server on Android (NanoHTTPD or Ktor embedded server)
