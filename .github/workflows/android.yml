@@ -2,10 +2,12 @@ name: Android Build
 
 on:
   push:
-    paths-ignore:
-      - '**.md'
     tags:
       - '[0-9]*'
+    branches:
+      - '**'
+    paths-ignore:
+      - '**.md'
   pull_request:
     paths-ignore:
       - '**.md'
