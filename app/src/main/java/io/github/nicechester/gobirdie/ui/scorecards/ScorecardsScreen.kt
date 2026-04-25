@@ -1,8 +1,6 @@
 package io.github.nicechester.gobirdie.ui.scorecards
 
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.Canvas
+import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,13 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,7 +33,6 @@ import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import java.time.Instant
@@ -364,8 +355,49 @@ private fun ShotMapScreen(
     val shots = holeScore.shots.sortedBy { it.sequence }
 
     val context = LocalContext.current
-    var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
+    val coordinator = remember { ShotMapCoordinator(context) }
     var styleLoaded by remember { mutableStateOf(false) }
+
+    // Wire coordinator callbacks
+    coordinator.onTapShot = { shotId ->
+        if (selectedShotId == shotId) {
+            clubPickerShotId = shotId
+            clubPickerInitialClub = holeScore.shots.firstOrNull { it.id == shotId }?.club ?: ClubType.UNKNOWN
+            showClubPicker = true
+        } else {
+            selectedShotId = shotId
+        }
+    }
+    coordinator.onTapMap = { gps ->
+        if (editMode) run {
+            val hi = editableHoles.indexOfFirst { it.id == holeScore.id }.takeIf { it >= 0 } ?: return@run
+            val seq = (editableHoles[hi].shots.maxOfOrNull { it.sequence } ?: 0) + 1
+            val newShot = Shot(
+                sequence = seq,
+                location = gps,
+                timestamp = java.time.Instant.now().toString(),
+                club = ClubType.UNKNOWN,
+            )
+            editableHoles = editableHoles.toMutableList().also {
+                it[hi] = it[hi].copy(shots = it[hi].shots + newShot, strokes = it[hi].shots.size + 1 + it[hi].putts)
+            }
+            selectedShotId = newShot.id
+            clubPickerShotId = newShot.id
+            clubPickerInitialClub = ClubType.UNKNOWN
+            showClubPicker = true
+            dirty = true
+        }
+    }
+    coordinator.onMoveShot = { shotId, gps -> run {
+        val hi = editableHoles.indexOfFirst { it.id == holeScore.id }.takeIf { it >= 0 } ?: return@run
+        val si = editableHoles[hi].shots.indexOfFirst { it.id == shotId }.takeIf { it >= 0 } ?: return@run
+        editableHoles = editableHoles.toMutableList().also {
+            val shots2 = it[hi].shots.toMutableList()
+            shots2[si] = shots2[si].copy(location = gps)
+            it[hi] = it[hi].copy(shots = shots2)
+        }
+        dirty = true
+    } }
 
     fun holeIndex() = editableHoles.indexOfFirst { it.id == holeScore.id }
 
@@ -378,11 +410,16 @@ private fun ShotMapScreen(
         viewModel.saveRound(updated)
     }
 
-    // Camera update on hole/edit change
+    // Camera update on hole change
     LaunchedEffect(holeIdx, styleLoaded) {
-        val map = mapLibreMap ?: return@LaunchedEffect
         if (!styleLoaded) return@LaunchedEffect
-        shotMapCamera(map, courseHole, shots)
+        coordinator.cameraToHole(shots)
+        coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
+    }
+
+    // Redraw on state changes
+    LaunchedEffect(shots, editMode, selectedShotId) {
+        if (styleLoaded) coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
     }
 
     if (showDeleteConfirm) {
@@ -431,77 +468,31 @@ private fun ShotMapScreen(
         AndroidView(
             factory = { ctx ->
                 MapLibre.getInstance(ctx)
-                val mv = MapView(ctx)
-                mv.onCreate(null)
-                mv.getMapAsync { mlMap ->
-                    mapLibreMap = mlMap
-                    val json = """
-                        {"version":8,"sources":{"osm":{"type":"raster","tiles":["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],"tileSize":256}},"layers":[{"id":"osm","type":"raster","source":"osm"}]}
-                    """.trimIndent()
-                    val file = java.io.File(ctx.cacheDir, "shotmap-style.json")
-                    file.writeText(json)
-                    mlMap.setStyle(Style.Builder().fromUri("file://${file.absolutePath}")) {
-                        styleLoaded = true
+                // Subclass MapView to route touches through coordinator
+                object : MapView(ctx) {
+                    override fun onTouchEvent(event: MotionEvent): Boolean {
+                        if (coordinator.onTouchEvent(event)) return true
+                        return super.onTouchEvent(event)
                     }
-                    mlMap.uiSettings.isRotateGesturesEnabled = false
+                }.also { mv ->
+                    mv.onCreate(null)
+                    mv.getMapAsync { mlMap ->
+                        coordinator.attach(mlMap)
+                        val json = """{"version":8,"sources":{"osm":{"type":"raster","tiles":["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],"tileSize":256}},"layers":[{"id":"osm","type":"raster","source":"osm"}]}"""
+                        val file = java.io.File(ctx.cacheDir, "shotmap-style.json")
+                        file.writeText(json)
+                        mlMap.setStyle(Style.Builder().fromUri("file://${file.absolutePath}")) {
+                            styleLoaded = true
+                            coordinator.cameraToHole(shots)
+                            coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
+                        }
+                        mlMap.uiSettings.isRotateGesturesEnabled = false
+                    }
                 }
-                mv
             },
             modifier = Modifier.fillMaxSize(),
             onRelease = { it.onDestroy() },
         )
-
-        // Overlay
-        if (styleLoaded && mapLibreMap != null) {
-            ShotMapOverlay(
-                map = mapLibreMap!!,
-                shots = shots,
-                courseHole = courseHole,
-                holeScore = holeScore,
-                editMode = editMode,
-                selectedShotId = selectedShotId,
-                onTapShot = { shotId ->
-                    if (selectedShotId == shotId) {
-                        // second tap → club picker
-                        clubPickerShotId = shotId
-                        clubPickerInitialClub = holeScore.shots.firstOrNull { it.id == shotId }?.club ?: ClubType.UNKNOWN
-                        showClubPicker = true
-                    } else {
-                        selectedShotId = shotId
-                    }
-                },
-                onTapMap = { gps ->
-                    if (editMode) {
-                        val hi = holeIndex().takeIf { it >= 0 } ?: return@ShotMapOverlay
-                        val seq = (editableHoles[hi].shots.maxOfOrNull { it.sequence } ?: 0) + 1
-                        val newShot = Shot(
-                            sequence = seq,
-                            location = gps,
-                            timestamp = java.time.Instant.now().toString(),
-                            club = ClubType.UNKNOWN,
-                        )
-                        editableHoles = editableHoles.toMutableList().also {
-                            it[hi] = it[hi].copy(shots = it[hi].shots + newShot, strokes = it[hi].shots.size + 1 + it[hi].putts)
-                        }
-                        selectedShotId = newShot.id
-                        clubPickerShotId = newShot.id
-                        clubPickerInitialClub = ClubType.UNKNOWN
-                        showClubPicker = true
-                        dirty = true
-                    }
-                },
-                onMoveShot = { shotId, gps ->
-                    val hi = holeIndex().takeIf { it >= 0 } ?: return@ShotMapOverlay
-                    val si = editableHoles[hi].shots.indexOfFirst { it.id == shotId }.takeIf { it >= 0 } ?: return@ShotMapOverlay
-                    editableHoles = editableHoles.toMutableList().also {
-                        val shots2 = it[hi].shots.toMutableList()
-                        shots2[si] = shots2[si].copy(location = gps)
-                        it[hi] = it[hi].copy(shots = shots2)
-                    }
-                    dirty = true
-                },
-            )
-        }
 
         // Hole info bar
         Surface(
@@ -680,207 +671,4 @@ private fun ClubPickerDialog(initial: ClubType, onSelect: (ClubType) -> Unit, on
     )
 }
 
-@Composable
-private fun ShotMapOverlay(
-    map: MapLibreMap,
-    shots: List<Shot>,
-    courseHole: Hole?,
-    holeScore: HoleScore,
-    editMode: Boolean = false,
-    selectedShotId: String? = null,
-    onTapShot: (String) -> Unit = {},
-    onTapMap: (GpsPoint) -> Unit = {},
-    onMoveShot: (String, GpsPoint) -> Unit = { _, _ -> },
-) {
-    fun project(gps: GpsPoint): Offset {
-        val px = map.projection.toScreenLocation(LatLng(gps.lat, gps.lon))
-        return Offset(px.x, px.y)
-    }
 
-    var draggingShotId by remember { mutableStateOf<String?>(null) }
-    var dragOffset by remember { mutableStateOf(Offset.Zero) }
-
-    val dashedEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
-
-    Canvas(
-        Modifier
-            .fillMaxSize()
-            .pointerInput(editMode, shots) {
-                detectTapGestures { tapOffset ->
-                    val hit = shots.firstOrNull { s ->
-                        (project(s.location) - tapOffset).getDistance() < 40f
-                    }
-                    if (hit != null) {
-                        onTapShot(hit.id)
-                    } else {
-                        val coord = map.projection.fromScreenLocation(
-                            android.graphics.PointF(tapOffset.x, tapOffset.y)
-                        )
-                        onTapMap(GpsPoint(lat = coord.latitude, lon = coord.longitude))
-                    }
-                }
-            }
-            .pointerInput(editMode, shots) {
-                if (!editMode) return@pointerInput
-                detectDragGestures(
-                    onDragStart = { startOffset ->
-                        draggingShotId = shots.firstOrNull { s ->
-                            (project(s.location) - startOffset).getDistance() < 40f
-                        }?.id
-                        dragOffset = startOffset
-                    },
-                    onDrag = { change, _ ->
-                        if (draggingShotId != null) {
-                            dragOffset = change.position
-                            change.consume()
-                        }
-                        // if not dragging a shot, don't consume — let MapLibre pan
-                    },
-                    onDragEnd = {
-                        val sid = draggingShotId
-                        if (sid != null) {
-                            val coord = map.projection.fromScreenLocation(
-                                android.graphics.PointF(dragOffset.x, dragOffset.y)
-                            )
-                            onMoveShot(sid, GpsPoint(lat = coord.latitude, lon = coord.longitude))
-                        }
-                        draggingShotId = null
-                    },
-                    onDragCancel = { draggingShotId = null },
-                )
-            }
-    ) {
-        // Build point chain: tee → shots → green
-        data class ChainPoint(val offset: Offset, val gps: GpsPoint, val club: ClubType?)
-        val chain = mutableListOf<ChainPoint>()
-
-        courseHole?.tee?.let { chain.add(ChainPoint(project(it), it, null)) }
-        shots.forEach { s -> chain.add(ChainPoint(project(s.location), s.location, s.club)) }
-        courseHole?.greenCenter?.let { chain.add(ChainPoint(project(it), it, null)) }
-
-        // Lines between points
-        for (i in 1 until chain.size) {
-            val from = chain[i - 1]
-            val to = chain[i]
-            val color = shotMapClubColor(to.club ?: from.club ?: ClubType.UNKNOWN)
-            drawLine(color, from.offset, to.offset, strokeWidth = 4f, pathEffect = dashedEffect)
-
-            // Yardage label
-            val yards = from.gps.distanceYards(to.gps)
-            if (yards > 0) {
-                shotMapLabel(this, "${yards}y", (from.offset + to.offset) / 2f, Color.Black.copy(alpha = 0.7f))
-            }
-        }
-
-        // Shot dots with club abbreviation
-        shots.forEach { s ->
-            val isBeingDragged = s.id == draggingShotId
-            val px = if (isBeingDragged) dragOffset else project(s.location)
-            val isSelected = s.id == selectedShotId
-            val color = shotMapClubColor(s.club)
-            drawCircle(color, 28f, px)
-            drawCircle(if (isSelected) Color.White else Color.White, 28f, px, style = Stroke(if (isSelected) 4f else 2f))
-            if (isSelected) drawCircle(Color.White, 32f, px, style = Stroke(2f))
-            val paint = android.graphics.Paint().apply {
-                this.color = android.graphics.Color.WHITE
-                textSize = 48f
-                isFakeBoldText = true
-                textAlign = android.graphics.Paint.Align.CENTER
-                isAntiAlias = true
-            }
-            drawContext.canvas.nativeCanvas.drawText(s.club.shortName, px.x, px.y + 12f, paint)
-        }
-
-        // Tee marker
-        courseHole?.tee?.let {
-            val px = project(it)
-            drawCircle(Color.White, 10f, px)
-            drawCircle(Color.DarkGray, 10f, px, style = Stroke(2f))
-        }
-
-        // Green / putt label
-        courseHole?.greenCenter?.let {
-            val px = project(it)
-            drawCircle(GolfGreen, 22f, px)
-            drawCircle(Color.White, 22f, px, style = Stroke(3f))
-            if (holeScore.putts > 0) {
-                shotMapLabel(this, "${holeScore.putts} putts", Offset(px.x, px.y + 32f), GolfGreen)
-            }
-        }
-    }
-}
-
-private fun shotMapCamera(map: MapLibreMap, courseHole: Hole?, shots: List<Shot>) {
-    val tee = courseHole?.tee
-    val green = courseHole?.greenCenter
-
-    if (tee != null && green != null) {
-        val dLon = Math.toRadians(green.lon - tee.lon)
-        val lat1 = Math.toRadians(tee.lat)
-        val lat2 = Math.toRadians(green.lat)
-        val y = sin(dLon) * cos(lat2)
-        val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
-        val bearing = (Math.toDegrees(atan2(y, x)) + 360) % 360
-        val distMeters = tee.distanceMeters(green)
-        val zoom = when {
-            distMeters > 500 -> 15.5
-            distMeters > 300 -> 16.0
-            distMeters > 150 -> 16.5
-            else -> 17.0
-        }
-        val center = LatLng(
-            (tee.lat + green.lat) / 2 + (green.lat - tee.lat) * 0.1,
-            (tee.lon + green.lon) / 2 + (green.lon - tee.lon) * 0.1,
-        )
-        map.animateCamera(
-            CameraUpdateFactory.newCameraPosition(
-                CameraPosition.Builder().target(center).zoom(zoom).bearing(bearing).tilt(0.0).build()
-            ), 600,
-        )
-    } else {
-        // Fallback: fit all shot locations
-        val allPoints = shots.map { LatLng(it.location.lat, it.location.lon) }
-        val target = if (allPoints.isNotEmpty()) {
-            LatLng(allPoints.map { it.latitude }.average(), allPoints.map { it.longitude }.average())
-        } else {
-            LatLng(0.0, 0.0)
-        }
-        map.animateCamera(
-            CameraUpdateFactory.newCameraPosition(
-                CameraPosition.Builder().target(target).zoom(16.0).build()
-            ), 600,
-        )
-    }
-}
-
-private fun shotMapClubColor(club: ClubType): Color = when (club) {
-    ClubType.DRIVER -> Color.Red
-    ClubType.WOOD_3, ClubType.WOOD_5 -> Color(0xFFFF9800)
-    ClubType.HYBRID_3, ClubType.HYBRID_4, ClubType.HYBRID_5 -> Color(0xFF009688)
-    ClubType.IRON_4, ClubType.IRON_5, ClubType.IRON_6, ClubType.IRON_7, ClubType.IRON_8, ClubType.IRON_9 -> Color(0xFF2196F3)
-    ClubType.PITCHING_WEDGE, ClubType.GAP_WEDGE, ClubType.SAND_WEDGE, ClubType.LOB_WEDGE -> Color(0xFF9C27B0)
-    ClubType.PUTTER -> GolfGreen
-    ClubType.UNKNOWN -> Color.Gray
-}
-
-private fun shotMapLabel(scope: DrawScope, text: String, center: Offset, bgColor: Color) {
-    val paint = android.graphics.Paint().apply {
-        color = android.graphics.Color.WHITE
-        textSize = 54f
-        isFakeBoldText = true
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-    }
-    val bgPaint = android.graphics.Paint().apply {
-        color = android.graphics.Color.argb(
-            (bgColor.alpha * 255).toInt(), (bgColor.red * 255).toInt(),
-            (bgColor.green * 255).toInt(), (bgColor.blue * 255).toInt(),
-        )
-        isAntiAlias = true
-    }
-    val w = paint.measureText(text)
-    scope.drawContext.canvas.nativeCanvas.apply {
-        drawRoundRect(center.x - w / 2 - 10f, center.y - 20f, center.x + w / 2 + 10f, center.y + 18f, 8f, 8f, bgPaint)
-        drawText(text, center.x, center.y + 10f, paint)
-    }
-}
