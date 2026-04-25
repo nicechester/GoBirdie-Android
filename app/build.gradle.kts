@@ -88,6 +88,9 @@ dependencies {
     // OkHttp
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+    // NanoHTTPD (embedded HTTP server for desktop sync)
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+
     // MapLibre
     implementation("org.maplibre.gl:android-sdk:11.8.0")
 

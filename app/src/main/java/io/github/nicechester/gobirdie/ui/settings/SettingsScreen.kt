@@ -25,6 +25,9 @@ import io.github.nicechester.gobirdie.core.data.api.GolfCourseApiClient
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.GpsPoint
+import io.github.nicechester.gobirdie.sync.SyncManager
+import io.github.nicechester.gobirdie.sync.SYNC_PORT
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -36,12 +39,13 @@ private val GolfGreen = Color(0xFF2E7D32)
 private enum class SettingsNav { Main, Courses, Clubs }
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(syncManager: SyncManager = hiltViewModel<SettingsViewModel>().syncManager) {
     var nav by remember { mutableStateOf(SettingsNav.Main) }
     when (nav) {
         SettingsNav.Main -> SettingsMain(
             onCourses = { nav = SettingsNav.Courses },
             onClubs = { nav = SettingsNav.Clubs },
+            syncManager = syncManager,
         )
         SettingsNav.Courses -> CourseManagerScreen(onBack = { nav = SettingsNav.Main })
         SettingsNav.Clubs -> MyClubsScreen(onBack = { nav = SettingsNav.Main })
@@ -52,11 +56,12 @@ fun SettingsScreen() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsMain(onCourses: () -> Unit, onClubs: () -> Unit) {
+private fun SettingsMain(onCourses: () -> Unit, onClubs: () -> Unit, syncManager: SyncManager) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("gobirdie_settings", Context.MODE_PRIVATE) }
     var teeColor by remember { mutableStateOf(prefs.getString("teeColor", "Blue") ?: "Blue") }
     var showTeePicker by remember { mutableStateOf(false) }
+    var syncEnabled by remember { mutableStateOf(syncManager.isRunning) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         // Courses
@@ -79,6 +84,40 @@ private fun SettingsMain(onCourses: () -> Unit, onClubs: () -> Unit) {
                 label = "Tee Color",
                 trailing = teeColor,
             ) { showTeePicker = true }
+        }
+
+        // Desktop Sync
+        item { SectionHeader("Desktop Sync") }
+        item {
+            Surface(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                tonalElevation = 1.dp,
+                shape = MaterialTheme.shapes.medium,
+            ) {
+                Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Sync, null, Modifier.size(20.dp), tint = GolfGreen)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Sync Server", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            if (syncEnabled) "Running on port $SYNC_PORT (WiFi only)" else "Off",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = syncEnabled,
+                        onCheckedChange = { on ->
+                            if (on) {
+                                syncEnabled = syncManager.start()
+                            } else {
+                                syncManager.stop()
+                                syncEnabled = false
+                            }
+                        },
+                    )
+                }
+            }
         }
 
         // Tip Jar
