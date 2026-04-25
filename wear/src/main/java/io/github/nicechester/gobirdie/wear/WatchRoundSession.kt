@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.os.Looper
+import io.github.nicechester.gobirdie.wear.BuildConfig
 import com.google.android.gms.location.*
 import com.google.android.gms.wearable.*
 import io.github.nicechester.gobirdie.core.model.ClubType
@@ -142,6 +143,7 @@ class WatchRoundSession(private val context: Context) {
         greenBack = null
         latestHeartRate.value = null
         heartRateSamples.clear()
+        hasExerciseLocation = false
         dismissClubPicker()
         clubBag.value = emptyList()
     }
@@ -213,7 +215,7 @@ class WatchRoundSession(private val context: Context) {
         if (!isActive) startLocation()
         if (!exerciseServiceStarted) {
             exerciseServiceStarted = true
-            ExerciseService.start(context)
+            if (!BuildConfig.DEBUG) ExerciseService.start(context)
         }
     }
 
@@ -238,6 +240,7 @@ class WatchRoundSession(private val context: Context) {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000).build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
+                if (hasExerciseLocation) return  // Health Services has taken over
                 result.lastLocation?.let {
                     currentLocation = it
                     recomputeDistances()
@@ -255,8 +258,11 @@ class WatchRoundSession(private val context: Context) {
         isActive = false
     }
 
+    private var hasExerciseLocation = false
+
     // Called by ExerciseService with Health Services GPS data
     fun onExerciseLocation(lat: Double, lon: Double, altitude: Double) {
+        hasExerciseLocation = true
         val loc = Location("exercise").apply {
             latitude = lat
             longitude = lon
