@@ -521,7 +521,7 @@ private fun ShotMapScreen(
                     Text("Hole ${holeScore.number}", color = Color.White, fontWeight = FontWeight.Bold)
                     Text(
                         "Par ${holeScore.par}  ·  ${holeScore.strokes} strokes  ·  ${holeScore.putts} putts",
-                        color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.85f), fontSize = 16.sp,
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -707,7 +707,6 @@ private fun ShotMapOverlay(
             .fillMaxSize()
             .pointerInput(editMode, shots) {
                 detectTapGestures { tapOffset ->
-                    // Check if tapped on a shot dot
                     val hit = shots.firstOrNull { s ->
                         (project(s.location) - tapOffset).getDistance() < 40f
                     }
@@ -735,6 +734,7 @@ private fun ShotMapOverlay(
                             dragOffset = change.position
                             change.consume()
                         }
+                        // if not dragging a shot, don't consume — let MapLibre pan
                     },
                     onDragEnd = {
                         val sid = draggingShotId
@@ -783,7 +783,7 @@ private fun ShotMapOverlay(
             if (isSelected) drawCircle(Color.White, 32f, px, style = Stroke(2f))
             val paint = android.graphics.Paint().apply {
                 this.color = android.graphics.Color.WHITE
-                textSize = 32f
+                textSize = 48f
                 isFakeBoldText = true
                 textAlign = android.graphics.Paint.Align.CENTER
                 isAntiAlias = true
@@ -866,7 +866,7 @@ private fun shotMapClubColor(club: ClubType): Color = when (club) {
 private fun shotMapLabel(scope: DrawScope, text: String, center: Offset, bgColor: Color) {
     val paint = android.graphics.Paint().apply {
         color = android.graphics.Color.WHITE
-        textSize = 38f
+        textSize = 54f
         isFakeBoldText = true
         textAlign = android.graphics.Paint.Align.CENTER
         isAntiAlias = true

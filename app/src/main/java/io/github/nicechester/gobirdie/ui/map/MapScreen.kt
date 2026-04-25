@@ -252,7 +252,7 @@ private fun HoleInfoBar(
                         hole.yardage?.let { append("  ·  $it yd") }
                         hole.handicap?.let { append("  ·  HCP $it") }
                     }
-                    Text(info, color = Color.White.copy(alpha = 0.85f), fontSize = 12.sp)
+                    Text(info, color = Color.White.copy(alpha = 0.85f), fontSize = 16.sp)
                 }
             }
             Spacer(Modifier.weight(1f))
@@ -641,7 +641,7 @@ private fun clubColor(club: ClubType): Color = when (club) {
 private fun drawDistanceLabel(scope: DrawScope, text: String, center: Offset, bgColor: Color) {
     val paint = android.graphics.Paint().apply {
         color = android.graphics.Color.WHITE
-        textSize = 28f
+        textSize = 44f
         isFakeBoldText = true
         textAlign = android.graphics.Paint.Align.CENTER
         isAntiAlias = true
