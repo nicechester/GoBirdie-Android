@@ -15,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -146,7 +148,8 @@ fun RoundScreen(appState: AppState) {
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth().height(48.dp),
+                modifier = Modifier.padding(horizontal = 32.dp).fillMaxWidth().height(48.dp)
+                    .semantics { testTag = "startRoundButton" },
             ) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))

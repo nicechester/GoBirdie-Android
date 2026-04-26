@@ -1,5 +1,8 @@
 package io.github.nicechester.gobirdie.ui.round
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -69,6 +72,7 @@ fun ActiveRoundScreen(
                 "Hole ${hole?.number ?: ""}",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { testTag = "holeLabel" },
             )
             Spacer(Modifier.width(8.dp))
             val info = buildString {
@@ -115,7 +119,7 @@ fun ActiveRoundScreen(
                         defaultClub = defaultClubForDistance(distToPin, enabledClubs)
                         showClubPicker = true
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).semantics { testTag = "markShotButton" },
                     colors = ButtonDefaults.buttonColors(containerColor = GolfGreen),
                 ) {
                     Icon(Icons.Default.LocationOn, null, Modifier.size(18.dp))
@@ -150,8 +154,12 @@ fun ActiveRoundScreen(
                     ) {
                         Icon(Icons.Default.RemoveCircle, "Minus", tint = if ((hole?.putts ?: 0) > 0) GolfGreen else Color.Gray)
                     }
-                    Text("${hole?.putts ?: 0}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { onUserInteraction(); session.setPutts((hole?.putts ?: 0) + 1) }) {
+                    Text("${hole?.putts ?: 0}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { testTag = "puttCount" })
+                    IconButton(
+                        onClick = { onUserInteraction(); session.setPutts((hole?.putts ?: 0) + 1) },
+                        modifier = Modifier.semantics { testTag = "puttPlus" },
+                    ) {
                         Icon(Icons.Default.AddCircle, "Plus", tint = GolfGreen)
                     }
                 }
@@ -172,7 +180,7 @@ fun ActiveRoundScreen(
                 }
                 Button(
                     onClick = { onUserInteraction(); if (isLast) onEndRound() else session.navigateTo(session.currentHoleNumber + 1) },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).semantics { testTag = "nextHoleButton" },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isLast) Color(0xFFE65100) else MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = if (isLast) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -449,7 +457,9 @@ private fun ClubPickerSheet(
         LazyColumn(Modifier.padding(horizontal = 16.dp).heightIn(max = 400.dp)) {
             items(enabledClubs) { club ->
                 Surface(
-                    Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable { onSelect(club) },
+                    Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                        .semantics { testTag = "club_${club.name}" }
+                        .clickable { onSelect(club) },
                     shape = MaterialTheme.shapes.small,
                 ) {
                     Row(

@@ -16,6 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.nicechester.gobirdie.core.model.Course
@@ -70,7 +72,7 @@ fun StartRoundScreen(
                     OutlinedTextField(
                         value = searchText,
                         onValueChange = { viewModel.onSearchTextChanged(it) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().semantics { testTag = "searchField" },
                         placeholder = { Text("Search by name") },
                         leadingIcon = { Icon(Icons.Default.Search, null) },
                         singleLine = true,
@@ -179,7 +181,7 @@ private fun HolePicker(course: Course, onStart: (Int) -> Unit) {
         Spacer(Modifier.height(12.dp))
         Button(
             onClick = { onStart(selected) },
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp).semantics { testTag = "startOnHoleButton" },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
         ) {
             Text("Start on Hole $selected")
