@@ -17,6 +17,7 @@ android {
         targetSdk = 35
         versionCode = 9
         versionName = "1.1.0"
+        testInstrumentationRunner = "io.github.nicechester.gobirdie.HiltTestRunner"
     }
 
     signingConfigs {
