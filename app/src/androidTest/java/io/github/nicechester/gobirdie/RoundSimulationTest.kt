@@ -3,9 +3,11 @@ package io.github.nicechester.gobirdie
 import android.location.Location
 import android.location.LocationManager
 import android.os.SystemClock
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
@@ -26,7 +28,7 @@ class RoundSimulationTest {
     val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
-    val composeRule = createAndroidComposeRule<MainActivity>()
+    val composeRule = createEmptyComposeRule()
 
     private lateinit var device: UiDevice
     private lateinit var shots: List<ShotCoord>
@@ -36,6 +38,9 @@ class RoundSimulationTest {
         hiltRule.inject()
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         shots = loadCsv()
+        // Launch activity after Hilt injection
+        ActivityScenario.launch(MainActivity::class.java)
+        composeRule.waitForIdle()
     }
 
     @Test
@@ -63,50 +68,38 @@ class RoundSimulationTest {
             playHole(holeNumber, holeShots)
         }
 
-        // 4. Verify we're back to empty state or scorecards
+        // 4. Verify scorecard was saved
         composeRule.onNodeWithText("Scorecards").performClick()
-        composeRule.onNodeWithText("Roosevelt", substring = true)
-            .assertExists()
+        composeRule.onNodeWithText("Roosevelt", substring = true).assertExists()
     }
 
     private fun playHole(holeNumber: Int, holeShots: List<ShotCoord>) {
-        // Wait for hole label
         composeRule.waitUntil(timeoutMillis = 10_000) {
             composeRule.onAllNodesWithTag("holeLabel").fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Mark each shot
         for (shot in holeShots) {
             injectLocation(shot.lat, shot.lon)
             Thread.sleep(1000)
-
             composeRule.onNodeWithTag("markShotButton").performClick()
             Thread.sleep(500)
-
-            // Accept recommended club — tap the one with a checkmark (default)
-            // The default club has a Check icon next to it; tap the first club in the list
-            // which is the recommended one (it appears first due to checkmark ordering)
             selectRecommendedClub()
         }
 
-        // Add 2 putts
         repeat(2) {
             composeRule.onNodeWithTag("puttPlus").performClick()
             Thread.sleep(200)
         }
 
-        // Advance to next hole or finish
         composeRule.onNodeWithTag("nextHoleButton").performClick()
         Thread.sleep(500)
     }
 
     private fun selectRecommendedClub() {
-        // Wait for club picker sheet
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithText("Select Club").fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Tap the club row that contains a Check icon (the recommended one)
         val recommended = composeRule.onAllNodes(
             hasAnyDescendant(hasContentDescription("Check"))
         ).fetchSemanticsNodes()
@@ -116,7 +109,6 @@ class RoundSimulationTest {
                 hasAnyDescendant(hasContentDescription("Check"))
             ).onFirst().performClick()
         } else {
-            // No recommendation — tap first club_ tagged node
             composeRule.onAllNodes(
                 SemanticsMatcher("club tag") {
                     it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)
@@ -128,10 +120,8 @@ class RoundSimulationTest {
     }
 
     private fun injectLocation(lat: Double, lon: Double) {
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val context = instrumentation.targetContext
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val lm = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
-
         val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
         for (provider in providers) {
             runCatching {
@@ -157,7 +147,7 @@ class RoundSimulationTest {
         val context = InstrumentationRegistry.getInstrumentation().context
         return context.assets.open("roosevelt-coords-simul.csv").bufferedReader()
             .lineSequence()
-            .drop(1) // header
+            .drop(1)
             .filter { it.isNotBlank() }
             .map { line ->
                 val parts = line.split(",").map { it.trim() }

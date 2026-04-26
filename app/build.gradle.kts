@@ -98,12 +98,28 @@ dependencies {
     // Wearable Data Layer (phone side)
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
 
+    configurations.all {
+        resolutionStrategy.force(
+            "androidx.test.espresso:espresso-core:3.6.1",
+            "androidx.test:runner:1.6.2"
+        )
+    }
+
+    configurations.all {
+        resolutionStrategy.force(
+            "androidx.test.espresso:espresso-core:3.6.1",
+            "androidx.test:runner:1.6.2"
+        )
+    }
+
     // Test
     val testComposeBom = platform("androidx.compose:compose-bom:2024.12.01")
     androidTestImplementation(testComposeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.51.1")
     kspAndroidTest("com.google.dagger:hilt-compiler:2.51.1")
