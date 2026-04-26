@@ -47,8 +47,17 @@ fun ActiveRoundScreen(
     val isLast = holeIndex == round.holes.size - 1
 
     var showClubPicker by remember { mutableStateOf(false) }
+    var defaultClub by remember { mutableStateOf(ClubType.UNKNOWN) }
     var showEndConfirm by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val enabledClubs = remember {
+        val prefs = context.getSharedPreferences("gobirdie_clubs", android.content.Context.MODE_PRIVATE)
+        val defaultSet = ClubType.defaultBag.map { it.name }.toSet()
+        val enabled = prefs.getStringSet("enabled", defaultSet) ?: defaultSet
+        ClubType.allSelectable.filter { it.name in enabled }
+    }
 
     Column(Modifier.fillMaxSize()) {
         // Header
@@ -100,7 +109,12 @@ fun ActiveRoundScreen(
             // Row 1: Mark Shot + Penalty + Undo
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = { onUserInteraction(); showClubPicker = true },
+                    onClick = {
+                        onUserInteraction()
+                        val distToPin = courseHole?.greenCenter?.let { playerLocation?.distanceYards(it) }
+                        defaultClub = defaultClubForDistance(distToPin, enabledClubs)
+                        showClubPicker = true
+                    },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = GolfGreen),
                 ) {
@@ -184,6 +198,8 @@ fun ActiveRoundScreen(
     // Club picker
     if (showClubPicker) {
         ClubPickerSheet(
+            defaultClub = defaultClub,
+            enabledClubs = enabledClubs,
             onSelect = { club ->
                 val loc = playerLocation ?: GpsPoint(0.0, 0.0)
                 val distToPin = courseHole?.greenCenter?.let { playerLocation?.distanceYards(it) }
@@ -395,9 +411,27 @@ private fun ScorecardRow(hole: HoleScore, isCurrent: Boolean, onTap: () -> Unit)
 
 // ─── Club Picker ────────────────────────────────────────────────────
 
+private fun defaultClubForDistance(yards: Int?, enabledClubs: List<ClubType>): ClubType {
+    if (yards == null || enabledClubs.isEmpty()) return enabledClubs.firstOrNull() ?: ClubType.UNKNOWN
+    val table = listOf(
+        ClubType.DRIVER to 230, ClubType.WOOD_3 to 210, ClubType.WOOD_5 to 195,
+        ClubType.HYBRID_3 to 190, ClubType.HYBRID_4 to 180, ClubType.HYBRID_5 to 170,
+        ClubType.IRON_4 to 170, ClubType.IRON_5 to 160, ClubType.IRON_6 to 150,
+        ClubType.IRON_7 to 140, ClubType.IRON_8 to 130, ClubType.IRON_9 to 120,
+        ClubType.PITCHING_WEDGE to 110, ClubType.GAP_WEDGE to 95,
+        ClubType.SAND_WEDGE to 80, ClubType.LOB_WEDGE to 60,
+    )
+    for ((club, minDist) in table) {
+        if (club in enabledClubs && yards >= minDist) return club
+    }
+    return enabledClubs.last()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ClubPickerSheet(
+    defaultClub: ClubType,
+    enabledClubs: List<ClubType>,
     onSelect: (ClubType) -> Unit,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
@@ -413,12 +447,20 @@ private fun ClubPickerSheet(
             TextButton(onClick = onSkip) { Text("Skip") }
         }
         LazyColumn(Modifier.padding(horizontal = 16.dp).heightIn(max = 400.dp)) {
-            items(ClubType.defaultBag) { club ->
+            items(enabledClubs) { club ->
                 Surface(
                     Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable { onSelect(club) },
                     shape = MaterialTheme.shapes.small,
                 ) {
-                    Text(club.displayName, Modifier.padding(12.dp), style = MaterialTheme.typography.bodyLarge)
+                    Row(
+                        Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(club.displayName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                        if (club == defaultClub) {
+                            Icon(Icons.Default.Check, null, tint = GolfGreen)
+                        }
+                    }
                 }
             }
         }
