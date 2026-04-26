@@ -38,13 +38,14 @@ class RoundSimulationTest {
         hiltRule.inject()
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         shots = loadCsv()
-        // Launch activity after Hilt injection
-        ActivityScenario.launch(MainActivity::class.java)
-        composeRule.waitForIdle()
     }
 
     @Test
     fun testFullRoundSimulation() {
+        // Launch activity inside the test so ComposeTestRule is already running
+        ActivityScenario.launch(MainActivity::class.java)
+        composeRule.waitForIdle()
+
         // 1. Navigate to Round tab and start a round
         composeRule.onNodeWithText("Round").performClick()
         composeRule.onNodeWithTag("startRoundButton").performClick()
