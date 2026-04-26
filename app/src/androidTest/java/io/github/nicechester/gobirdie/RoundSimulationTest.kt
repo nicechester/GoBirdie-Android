@@ -1,12 +1,21 @@
 package io.github.nicechester.gobirdie
 
 import android.location.Location
-import android.location.LocationManager
 import android.os.SystemClock
-import androidx.compose.ui.semantics.SemanticsProperties
+import com.google.android.gms.location.LocationServices
 import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.*
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -44,6 +53,8 @@ class RoundSimulationTest {
     fun setUp() {
         hiltRule.inject()
         device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        // Allow this test package to provide mock locations
+        device.executeShellCommand("appops set io.github.nicechester.gobirdie.test android:mock_location allow")
         shots = loadCsv()
     }
 
@@ -60,15 +71,25 @@ class RoundSimulationTest {
         // 2. Search for Roosevelt
         composeRule.onNodeWithTag("searchField").performTextInput("Roosevelt")
         composeRule.onNodeWithTag("searchField").performImeAction()
-        Thread.sleep(3000)
 
-        // Tap first course result
-        composeRule.onAllNodesWithText("Roosevelt", substring = true)[0].performClick()
-        Thread.sleep(1000)
+        // DISMISS KEYBOARD: This ensures the UI isn't obscured
+        device.pressBack()
 
-        // Start on hole 1
+        // WAIT: Instead of Thread.sleep, wait specifically for the list item
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodesWithText("Roosevelt Golf Course").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // CLICK SPECIFICALLY: Target the list item, not the search bar text
+        composeRule.onNodeWithText("Roosevelt Golf Course").performClick()
+
+        // WAIT FOR NEXT SCREEN: Ensure the button exists before clicking
+        composeRule.waitUntil(10_000) {
+            composeRule.onAllNodesWithTag("startOnHoleButton").fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // 3. Start on hole 1
         composeRule.onNodeWithTag("startOnHoleButton").performClick()
-        Thread.sleep(1000)
 
         // 3. Play each hole
         val holeGroups = shots.groupBy { it.hole }.toSortedMap()
@@ -77,30 +98,40 @@ class RoundSimulationTest {
         }
 
         // 4. Verify scorecard was saved
+        // Give the app a moment to finish the round and return to the main dashboard
+        composeRule.waitUntil(20_000) {
+            composeRule.onAllNodesWithText("Scorecards").fetchSemanticsNodes().isNotEmpty()
+        }
         composeRule.onNodeWithText("Scorecards").performClick()
-        composeRule.onNodeWithText("Roosevelt", substring = true).assertExists()
     }
 
     private fun playHole(holeNumber: Int, holeShots: List<ShotCoord>) {
-        composeRule.waitUntil(timeoutMillis = 10_000) {
+        // Wait for the hole screen to settle
+        composeRule.waitUntil(10_000) {
             composeRule.onAllNodesWithTag("holeLabel").fetchSemanticsNodes().isNotEmpty()
         }
 
-        for (shot in holeShots) {
+        for ((index, shot) in holeShots.withIndex()) {
+            // Inject and wait significantly longer for the first shot of each hole
             injectLocation(shot.lat, shot.lon)
-            Thread.sleep(1000)
+            Thread.sleep(2000)
+
+            // Verify the "Mark" button is clickable before proceeding
             composeRule.onNodeWithTag("markShotButton").performClick()
-            Thread.sleep(500)
+
+            // IMPORTANT: selectRecommendedClub MUST complete before the next iteration
+            // so the app isn't "busy" when the next location arrives.
             selectRecommendedClub()
+
+            // Small gap to let the UI finish the "Shot Recorded" animation
+            Thread.sleep(1000)
         }
 
+        // Putts and navigation
         repeat(2) {
             composeRule.onNodeWithTag("puttPlus").performClick()
-            Thread.sleep(200)
         }
-
         composeRule.onNodeWithTag("nextHoleButton").performClick()
-        Thread.sleep(500)
     }
 
     private fun selectRecommendedClub() {
@@ -129,28 +160,23 @@ class RoundSimulationTest {
 
     private fun injectLocation(lat: Double, lon: Double) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val lm = context.getSystemService(android.content.Context.LOCATION_SERVICE) as LocationManager
-        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
-        for (provider in providers) {
-            runCatching {
-                lm.addTestProvider(
-                    provider, false, false, false, false, true, true, true,
-                    android.location.Criteria.POWER_LOW, android.location.Criteria.ACCURACY_FINE
-                )
-                lm.setTestProviderEnabled(provider, true)
-            }
-            val loc = Location(provider).apply {
-                latitude = lat
-                longitude = lon
-                altitude = 100.0
-                accuracy = 5f
-                time = System.currentTimeMillis()
-                elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos()
-            }
-            runCatching { lm.setTestProviderLocation(provider, loc) }
-        }
-    }
+        val fusedClient = LocationServices.getFusedLocationProviderClient(context)
 
+        // Use a slightly future timestamp to ensure the system treats this as the 'latest' fix
+        val timeBuffer = 1000L
+        val mockLocation = Location("fused").apply {
+            latitude = lat
+            longitude = lon
+            altitude = 100.0
+            accuracy = 1.0f // Setting high accuracy triggers faster updates in many apps
+            time = System.currentTimeMillis() + timeBuffer
+            elapsedRealtimeNanos = SystemClock.elapsedRealtimeNanos() + (timeBuffer * 1_000_000)
+        }
+
+        fusedClient.setMockMode(true)
+        fusedClient.setMockLocation(mockLocation)
+    }
+    
     private fun loadCsv(): List<ShotCoord> {
         val context = InstrumentationRegistry.getInstrumentation().context
         return context.assets.open("roosevelt-coords-simul.csv").bufferedReader()

@@ -206,7 +206,9 @@ class StartRoundViewModel @Inject constructor(
             match?.let { overpass.downloadCourse(it.osmId, item.name, playerLocation) }
                 ?.firstOrNull()?.holes ?: emptyList()
         } catch (e: Exception) { emptyList() }
-        val holes = apiHoles.map { h ->
+        // If Overpass has geometry, trust its hole count (e.g. 9-hole courses the API lists as 18)
+        val holeCount = if (overpassHoles.isNotEmpty()) overpassHoles.size else apiHoles.size
+        val holes = apiHoles.take(holeCount).map { h ->
             val gpsHole = overpassHoles.firstOrNull { it.number == h.number }
             Hole(
                 number = h.number, par = h.par, handicap = h.handicap, yardage = h.yardage.toString(),
