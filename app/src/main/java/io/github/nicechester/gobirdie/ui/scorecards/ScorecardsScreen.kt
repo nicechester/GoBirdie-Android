@@ -410,14 +410,13 @@ private fun ShotMapScreen(
         viewModel.saveRound(updated)
     }
 
-    // Camera update on hole change
+    // Camera + redraw on hole change or initial style load
     LaunchedEffect(holeIdx, styleLoaded) {
         if (!styleLoaded) return@LaunchedEffect
-        coordinator.cameraToHole(shots)
-        coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
+        coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId, moveCamera = true)
     }
 
-    // Redraw on state changes
+    // Redraw on state changes (no camera move)
     LaunchedEffect(shots, editMode, selectedShotId) {
         if (styleLoaded) coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
     }
@@ -483,8 +482,6 @@ private fun ShotMapScreen(
                         file.writeText(json)
                         mlMap.setStyle(Style.Builder().fromUri("file://${file.absolutePath}")) {
                             styleLoaded = true
-                            coordinator.cameraToHole(shots)
-                            coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
                         }
                         mlMap.uiSettings.isRotateGesturesEnabled = false
                     }

@@ -78,6 +78,7 @@ class ShotMapCoordinator(private val context: Context) {
         holeScore: HoleScore,
         editMode: Boolean,
         selectedShotId: String?,
+        moveCamera: Boolean = false,
     ) {
         val shotsChanged = shots != this.shots
         val selectionChanged = selectedShotId != this.selectedShotId
@@ -92,6 +93,9 @@ class ShotMapCoordinator(private val context: Context) {
 
         if (shotsChanged || holeChanged || editChanged || selectionChanged) {
             redraw()
+        }
+        if (moveCamera || holeChanged) {
+            cameraToHole(shots)
         }
     }
 
