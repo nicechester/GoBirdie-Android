@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,6 +78,7 @@ fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
             } else {
                 LazyColumn(Modifier.padding(padding)) {
                     items(rounds, key = { it.id }) { round ->
+                        val index = rounds.indexOf(round)
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = {
                                 if (it == SwipeToDismissBoxValue.EndToStart) {
@@ -96,7 +99,7 @@ fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
                             },
                             enableDismissFromStartToEnd = false,
                         ) {
-                            RoundRow(round) { selectedRound = round }
+                            RoundRow(round, Modifier.semantics { testTag = "scorecardItem_$index" }) { selectedRound = round }
                         }
                         HorizontalDivider()
                     }
@@ -109,13 +112,13 @@ fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
 // ─── Round Row ──────────────────────────────────────────────────────
 
 @Composable
-private fun RoundRow(round: Round, onClick: () -> Unit) {
+private fun RoundRow(round: Round, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val playedPar = round.holes.filter { it.strokes > 0 }.sumOf { it.par }
     val diff = round.totalStrokes - playedPar
     val diffStr = when { diff > 0 -> "+$diff"; diff == 0 -> "E"; else -> "$diff" }
     val diffColor = when { diff < 0 -> GolfGreen; diff == 0 -> MaterialTheme.colorScheme.onSurface; else -> Color.Red }
 
-    Surface(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Surface(modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(round.courseName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)

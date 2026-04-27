@@ -3,6 +3,7 @@ package io.github.nicechester.gobirdie.core.data.location
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Looper
+import androidx.annotation.VisibleForTesting
 import com.google.android.gms.location.*
 import io.github.nicechester.gobirdie.core.model.GpsPoint
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,5 +41,10 @@ class LocationService(context: Context) {
     fun stop() {
         callback?.let { fusedClient.removeLocationUpdates(it) }
         callback = null
+    }
+
+    @VisibleForTesting
+    fun setTestLocation(lat: Double, lon: Double) {
+        _location.value = GpsPoint(lat, lon)
     }
 }
