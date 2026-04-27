@@ -112,19 +112,11 @@ class RoundSimulationTest {
         }
 
         for ((index, shot) in holeShots.withIndex()) {
-            // Inject and wait significantly longer for the first shot of each hole
             injectLocation(shot.lat, shot.lon)
-            Thread.sleep(2000)
-
-            // Verify the "Mark" button is clickable before proceeding
+            waitForFlagDistanceChange()
             composeRule.onNodeWithTag("markShotButton").performClick()
-
-            // IMPORTANT: selectRecommendedClub MUST complete before the next iteration
-            // so the app isn't "busy" when the next location arrives.
             selectRecommendedClub()
-
-            // Small gap to let the UI finish the "Shot Recorded" animation
-            Thread.sleep(1000)
+            Thread.sleep(500)
         }
 
         // Putts and navigation
@@ -158,6 +150,20 @@ class RoundSimulationTest {
         Thread.sleep(300)
     }
 
+    private fun waitForFlagDistanceChange() {
+        val before = composeRule.onAllNodesWithTag("flagDistance")
+            .fetchSemanticsNodes().firstOrNull()
+            ?.config?.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)
+            ?.firstOrNull()?.text
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            val current = composeRule.onAllNodesWithTag("flagDistance")
+                .fetchSemanticsNodes().firstOrNull()
+                ?.config?.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)
+                ?.firstOrNull()?.text
+            current != null && current != before && current != "—"
+        }
+    }
+
     private fun injectLocation(lat: Double, lon: Double) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val fusedClient = LocationServices.getFusedLocationProviderClient(context)
@@ -176,7 +182,7 @@ class RoundSimulationTest {
         fusedClient.setMockMode(true)
         fusedClient.setMockLocation(mockLocation)
     }
-    
+
     private fun loadCsv(): List<ShotCoord> {
         val context = InstrumentationRegistry.getInstrumentation().context
         return context.assets.open("roosevelt-coords-simul.csv").bufferedReader()

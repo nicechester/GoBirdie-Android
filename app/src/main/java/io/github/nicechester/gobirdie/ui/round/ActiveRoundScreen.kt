@@ -267,6 +267,7 @@ private fun DistanceDisplay(
                 label = "Flag",
                 value = flag?.toString() ?: courseHole?.yardage ?: "—",
                 isPrimary = true,
+                modifier = Modifier.semantics { testTag = "flagDistance" },
             )
             // Back
             DistanceCol(label = "Back", value = back?.toString() ?: "—", isPrimary = false)
@@ -275,8 +276,8 @@ private fun DistanceDisplay(
 }
 
 @Composable
-private fun DistanceCol(label: String, value: String, isPrimary: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun DistanceCol(label: String, value: String, isPrimary: Boolean, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             value,
             fontSize = if (isPrimary) 48.sp else 32.sp,
