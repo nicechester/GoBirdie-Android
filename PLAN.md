@@ -318,6 +318,28 @@ dependencies {
 - [ ] Play Store listing, screenshots
 - [ ] Internal testing track
 
+### M9 — Wear OS Polish (2026-04-27)
+- [ ] **Club picker: carousel → full-screen list** — Replace 3-item carousel overlay with `ScalingLazyColumn` full-screen list; tap any row confirms immediately; crown scrolls the list; highlighted club shown in green/bold
+- [ ] **Cancel button on club picker** — Small red ✕ button; cancels the shot (undoes the stroke increment) and dismisses without recording a club
+- [ ] **Club picker auto-submit timer: 10s → 15s** — Extend timer from 10s to 15s; show countdown next to highlighted club row
+- [ ] **Swing detection via accelerometer** — `SensorManager` at 50Hz; detect g-force magnitude > 8g; auto-trigger `markShot()`; 2s debounce prevents double-triggers from follow-through
+- [ ] **Practice swing detection** — Swing detected while club picker is open resets the 15s auto-submit timer instead of marking a new shot
+
+### M10 — Phone App Polish (2026-04-27 / 2026-04-28)
+
+#### 2026-04-27
+- [x] **MiniScorecard read-only** — Disable `onHoleSelect` tap on scorecard rows; hole navigation only via Prev/Next buttons
+- [x] **Move shots to correct hole** — Add "Move Shots to Hole..." in the round menu (visible when current hole has shots); moves all shots and putts from current hole to selected target hole, re-sequences shots, adjusts stroke counts on both holes
+- [x] **Club selector as wheel Picker** — Replace `LazyColumn` list in `ClubPickerSheet` with `LazyColumn` + `rememberSnapFlingBehavior` wheel style; Confirm button submits selection
+- [x] **Cancel button on club picker** — Rename "Skip" to "Cancel"; dismiss without recording any shot (no `UNKNOWN` club recorded)
+
+#### 2026-04-28
+- [x] **Shot auto-ordering by direction toward green** — When adding a shot in edit mode, insert it in sequence order based on proximity/direction toward the green among existing shots, rather than appending at the end
+- [x] **Reorder shots in edit mode** — "Reorder Shots" button in edit mode opens a bottom sheet with up/down arrows to reorder shots, confirm to apply new sequence
+- [x] **Cancel tap-to-add shot** — After tapping the map to place a new shot in edit mode, show a Cancel button to discard the placement before confirming
+- [x] **Wrong zoom after delete/Done in edit mode** — Preserve current hole camera position after deleting a shot or tapping Done; don't reset to world zoom
+- [x] **Accidental shot added after dragging** — Set a `suppressNextTap` flag on drag end in `ShotMapCoordinator` to prevent `onTapMap` firing on finger-lift after a drag
+
 ## Data Compatibility
 
 The JSON format is identical between iOS and Android. A round saved on iOS can be loaded on Android and vice versa. This enables:

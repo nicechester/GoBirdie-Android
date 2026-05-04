@@ -29,6 +29,8 @@ class ShotMapCoordinator(private val context: Context) {
     private var draggingShotMarkerId: Long? = null
     private var draggingDownX = 0f
     private var draggingDownY = 0f
+    private var suppressNextTap = false
+    private var lastCameraPosition: CameraPosition? = null
 
     fun attach(map: MapLibreMap) {
         this.map = map
@@ -56,19 +58,17 @@ class ShotMapCoordinator(private val context: Context) {
                 (tee.lat + green.lat) / 2 + (green.lat - tee.lat) * 0.1,
                 (tee.lon + green.lon) / 2 + (green.lon - tee.lon) * 0.1,
             )
-            m.animateCamera(
-                CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.Builder().target(center).zoom(zoom).bearing(bearing).tilt(0.0).build()
-                ), 600,
-            )
+            val position = CameraPosition.Builder().target(center).zoom(zoom).bearing(bearing).tilt(0.0).build()
+            lastCameraPosition = position
+            m.animateCamera(CameraUpdateFactory.newCameraPosition(position), 600)
         } else {
             val allPoints = shots.map { LatLng(it.location.lat, it.location.lon) }
             val target = if (allPoints.isNotEmpty())
                 LatLng(allPoints.map { it.latitude }.average(), allPoints.map { it.longitude }.average())
             else LatLng(0.0, 0.0)
-            m.animateCamera(CameraUpdateFactory.newCameraPosition(
-                CameraPosition.Builder().target(target).zoom(16.0).build()
-            ), 600)
+            val position = CameraPosition.Builder().target(target).zoom(16.0).build()
+            lastCameraPosition = position
+            m.animateCamera(CameraUpdateFactory.newCameraPosition(position), 600)
         }
     }
 
@@ -101,6 +101,7 @@ class ShotMapCoordinator(private val context: Context) {
 
     private fun redraw() {
         val m = map ?: return
+        val savedCamera = lastCameraPosition
         m.clear()
         markerToShot.clear()
 
@@ -161,6 +162,11 @@ class ShotMapCoordinator(private val context: Context) {
                 )
             }
         }
+
+        // Restore camera if we have a saved position (prevents world-zoom reset on redraw)
+        if (savedCamera != null) {
+            m.moveCamera(CameraUpdateFactory.newCameraPosition(savedCamera))
+        }
     }
 
     // ── Touch handling (called from MapView.onTouchEvent override) ──
@@ -209,11 +215,12 @@ class ShotMapCoordinator(private val context: Context) {
                         }
                     }
                     draggingShotMarkerId = null
+                    suppressNextTap = moved
                     return true
                 }
 
                 // Tap on empty map
-                if (!moved) {
+                if (!moved && !suppressNextTap) {
                     val hit = hitTestShot(event.x, event.y)
                     if (hit != null) {
                         onTapShot(hit.second)
@@ -225,6 +232,7 @@ class ShotMapCoordinator(private val context: Context) {
                         return true
                     }
                 }
+                suppressNextTap = false
                 return false
             }
             MotionEvent.ACTION_CANCEL -> {
@@ -247,6 +255,17 @@ class ShotMapCoordinator(private val context: Context) {
             if (sqrt(dx * dx + dy * dy) < 48f) return Pair(markerId, shotId)
         }
         return null
+    }
+
+    /**
+     * Returns the insertion index for a new shot at [newPoint] among [existing] shots,
+     * ordered by progress toward [green]. Shots closer to the green come later in sequence.
+     */
+    fun insertionIndex(newPoint: GpsPoint, existing: List<Shot>, green: GpsPoint?): Int {
+        if (existing.isEmpty() || green == null) return existing.size
+        val newDist = newPoint.distanceMeters(green)
+        val idx = existing.indexOfFirst { it.location.distanceMeters(green) < newDist }
+        return if (idx < 0) existing.size else idx
     }
 
     // ── Icon factories ──

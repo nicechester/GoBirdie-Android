@@ -111,6 +111,22 @@ class RoundSession(
         _round.value = _round.value.copy(heartRateTimeline = samples)
     }
 
+    fun moveShotsToHole(fromHoleNumber: Int, toHoleNumber: Int) {
+        update { holes ->
+            val fromIdx = holes.indexOfFirst { it.number == fromHoleNumber }.takeIf { it >= 0 } ?: return@update
+            val toIdx = holes.indexOfFirst { it.number == toHoleNumber }.takeIf { it >= 0 } ?: return@update
+            val from = holes[fromIdx]
+            val to = holes[toIdx]
+            val movedShots = from.shots.mapIndexed { i, s -> s.copy(sequence = to.shots.size + i + 1) }
+            holes[fromIdx] = from.copy(shots = emptyList(), strokes = from.putts, penalties = 0)
+            holes[toIdx] = to.copy(
+                shots = to.shots + movedShots,
+                strokes = to.strokes + from.shots.size,
+                penalties = to.penalties + from.penalties,
+            )
+        }
+    }
+
     fun snapshot(): Round = _round.value
 
     private fun update(block: (MutableList<HoleScore>) -> Unit) {

@@ -118,6 +118,8 @@ fun RoundScreen(appState: AppState) {
         )
     } else {
         // Empty state
+        var showSettingsNavigation by remember { mutableStateOf(false) }
+
         Column(
             Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.Center,

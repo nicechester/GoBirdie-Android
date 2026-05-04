@@ -39,13 +39,13 @@ private val GolfGreen = Color(0xFF2E7D32)
 private enum class SettingsNav { Main, Courses, Clubs }
 
 @Composable
-fun SettingsScreen(syncManager: SyncManager = hiltViewModel<SettingsViewModel>().syncManager) {
+fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     var nav by remember { mutableStateOf(SettingsNav.Main) }
     when (nav) {
         SettingsNav.Main -> SettingsMain(
             onCourses = { nav = SettingsNav.Courses },
             onClubs = { nav = SettingsNav.Clubs },
-            syncManager = syncManager,
+            syncManager = viewModel.syncManager,
         )
         SettingsNav.Courses -> CourseManagerScreen(onBack = { nav = SettingsNav.Main })
         SettingsNav.Clubs -> MyClubsScreen(onBack = { nav = SettingsNav.Main })
@@ -56,7 +56,11 @@ fun SettingsScreen(syncManager: SyncManager = hiltViewModel<SettingsViewModel>()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SettingsMain(onCourses: () -> Unit, onClubs: () -> Unit, syncManager: SyncManager) {
+private fun SettingsMain(
+    onCourses: () -> Unit,
+    onClubs: () -> Unit,
+    syncManager: SyncManager,
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("gobirdie_settings", Context.MODE_PRIVATE) }
     var teeColor by remember { mutableStateOf(prefs.getString("teeColor", "Blue") ?: "Blue") }

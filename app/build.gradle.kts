@@ -59,6 +59,10 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:data"))
 
+    // Garmin Connect IQ
+    // Note: SDK requires local JAR/AAR or Garmin's private Maven repository
+    // implementation("com.garmin.connectiq:ciq-companion-app-sdk:3.1.10")
+
     // Compose
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
