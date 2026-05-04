@@ -375,20 +375,13 @@ private fun ClubPickerOverlay(session: WatchRoundSession) {
                 Text(
                     clubDisplayName(clubs.getOrElse(currentIndex) { "?" }),
                     fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GolfGreen,
+                    modifier = Modifier.clickable { session.confirmClub() },
                 )
                 Text(
                     if (currentIndex < clubs.size - 1) clubDisplayName(clubs[currentIndex + 1]) else "",
                     fontSize = 13.sp, color = Color.Gray.copy(alpha = 0.5f),
                 )
             }
-
-            Spacer(Modifier.height(12.dp))
-
-            CompactChip(
-                onClick = { session.confirmClub() },
-                label = { Text("✓", fontSize = 18.sp, fontWeight = FontWeight.Bold) },
-                colors = ChipDefaults.chipColors(backgroundColor = GolfGreen),
-            )
         }
     }
 }

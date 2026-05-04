@@ -5,9 +5,12 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.ClubType
+import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.GpsPoint
 import io.github.nicechester.gobirdie.core.model.Hole
@@ -53,6 +57,7 @@ fun ActiveRoundScreen(
     var defaultClub by remember { mutableStateOf(ClubType.UNKNOWN) }
     var showEndConfirm by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var showMoveShots by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val enabledClubs = remember {
@@ -92,6 +97,13 @@ fun ActiveRoundScreen(
                         onClick = { showMenu = false; showEndConfirm = true },
                         leadingIcon = { Icon(Icons.Default.Flag, null) },
                     )
+                    if ((hole?.shots?.size ?: 0) > 0) {
+                        DropdownMenuItem(
+                            text = { Text("Move Shots to Hole...") },
+                            onClick = { showMenu = false; showMoveShots = true },
+                            leadingIcon = { Icon(Icons.Default.SwapHoriz, null) },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("Cancel Round", color = MaterialTheme.colorScheme.error) },
                         onClick = { showMenu = false; onCancelRound() },
@@ -198,7 +210,6 @@ fun ActiveRoundScreen(
             holes = round.holes,
             currentHoleNumber = hole?.number ?: 1,
             totalStrokes = round.totalStrokes,
-            onHoleSelect = { session.navigateTo(it) },
             modifier = Modifier.weight(1f).padding(top = 4.dp),
         )
     }
@@ -214,12 +225,20 @@ fun ActiveRoundScreen(
                 session.markShot(loc, club, distanceToPinYards = distToPin)
                 showClubPicker = false
             },
-            onSkip = {
-                val loc = playerLocation ?: GpsPoint(0.0, 0.0)
-                session.markShot(loc)
-                showClubPicker = false
+            onCancel = { showClubPicker = false },
+        )
+    }
+
+    // Move shots dialog
+    if (showMoveShots && hole != null) {
+        MoveShotsDialog(
+            currentHoleNumber = hole.number,
+            allHoles = round.holes,
+            onConfirm = { targetNumber ->
+                session.moveShotsToHole(hole.number, targetNumber)
+                showMoveShots = false
             },
-            onDismiss = { showClubPicker = false },
+            onDismiss = { showMoveShots = false },
         )
     }
 
@@ -295,7 +314,6 @@ private fun MiniScorecard(
     holes: List<HoleScore>,
     currentHoleNumber: Int,
     totalStrokes: Int,
-    onHoleSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -337,7 +355,6 @@ private fun MiniScorecard(
                 ScorecardRow(
                     hole = h,
                     isCurrent = h.number == currentHoleNumber,
-                    onTap = { onHoleSelect(h.number) },
                 )
                 HorizontalDivider(Modifier.padding(start = 16.dp), thickness = 0.5.dp)
             }
@@ -346,7 +363,7 @@ private fun MiniScorecard(
 }
 
 @Composable
-private fun ScorecardRow(hole: HoleScore, isCurrent: Boolean, onTap: () -> Unit) {
+private fun ScorecardRow(hole: HoleScore, isCurrent: Boolean) {
     val overPar = hole.strokes - hole.par
     val scoreLabel = when {
         hole.strokes == 0 -> "—"
@@ -364,7 +381,6 @@ private fun ScorecardRow(hole: HoleScore, isCurrent: Boolean, onTap: () -> Unit)
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onTap)
             .background(if (isCurrent) GolfGreen.copy(alpha = 0.08f) else Color.Transparent)
             .padding(horizontal = 16.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -436,45 +452,41 @@ private fun defaultClubForDistance(yards: Int?, enabledClubs: List<ClubType>): C
     return enabledClubs.last()
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ─── Move Shots Dialog ───────────────────────────────────────────────
+
 @Composable
-private fun ClubPickerSheet(
-    defaultClub: ClubType,
-    enabledClubs: List<ClubType>,
-    onSelect: (ClubType) -> Unit,
-    onSkip: () -> Unit,
+private fun MoveShotsDialog(
+    currentHoleNumber: Int,
+    allHoles: List<HoleScore>,
+    onConfirm: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState()
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Select Club", style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = onSkip) { Text("Skip") }
-        }
-        LazyColumn(Modifier.padding(horizontal = 16.dp).heightIn(max = 400.dp)) {
-            items(enabledClubs) { club ->
-                Surface(
-                    Modifier.fillMaxWidth().padding(vertical = 2.dp)
-                        .semantics { testTag = "club_${club.name}" }
-                        .clickable { onSelect(club) },
-                    shape = MaterialTheme.shapes.small,
-                ) {
+    val targets = allHoles.filter { it.number != currentHoleNumber }
+    var selected by remember { mutableStateOf(targets.firstOrNull()?.number) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move Shots to Hole") },
+        text = {
+            LazyColumn {
+                items(targets) { hole ->
                     Row(
-                        Modifier.padding(12.dp),
+                        Modifier.fillMaxWidth().clickable { selected = hole.number }.padding(vertical = 10.dp, horizontal = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(club.displayName, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                        if (club == defaultClub) {
-                            Icon(Icons.Default.Check, null, tint = GolfGreen)
-                        }
+                        RadioButton(selected = hole.number == selected, onClick = { selected = hole.number })
+                        Spacer(Modifier.width(8.dp))
+                        Text("Hole ${hole.number}  (Par ${hole.par})", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
-        }
-        Spacer(Modifier.height(32.dp))
-    }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { selected?.let { onConfirm(it) } },
+                enabled = selected != null,
+            ) { Text("Move", color = GolfGreen, fontWeight = FontWeight.Bold) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }

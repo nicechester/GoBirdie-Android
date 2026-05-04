@@ -1,11 +1,11 @@
 package io.github.nicechester.gobirdie.ui.scorecards
 
-import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -15,7 +15,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,8 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.core.model.*
+import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import org.maplibre.android.MapLibre
-import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
@@ -144,9 +147,9 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
     val backNine = currentRound.holes.drop(9).take(9).let { if (it.any { h -> h.strokes > 0 }) it else emptyList() }
     val holesWithShots = currentRound.holes.filter { it.shots.isNotEmpty() }
     var showShotMap by remember { mutableStateOf(false) }
+    val course = remember(currentRound.courseId) { viewModel.loadCourse(currentRound.courseId) }
 
     if (showShotMap) {
-        val course = remember { viewModel.loadCourse(currentRound.courseId) }
         if (course != null) {
             ShotMapScreen(
                 holes = holesWithShots,
@@ -352,6 +355,8 @@ private fun ShotMapScreen(
     var showClubPicker by remember { mutableStateOf(false) }
     var clubPickerShotId by remember { mutableStateOf<String?>(null) }
     var clubPickerInitialClub by remember { mutableStateOf(ClubType.UNKNOWN) }
+    var pendingTapPoint by remember { mutableStateOf<GpsPoint?>(null) }
+    var showReorderSheet by remember { mutableStateOf(false) }
 
     val holeScore = editableHoles.getOrNull(holeIdx) ?: return
     val courseHole = courseHoles.firstOrNull { it.number == holeScore.number }
@@ -361,7 +366,6 @@ private fun ShotMapScreen(
     val coordinator = remember { ShotMapCoordinator(context) }
     var styleLoaded by remember { mutableStateOf(false) }
 
-    // Wire coordinator callbacks
     coordinator.onTapShot = { shotId ->
         if (selectedShotId == shotId) {
             clubPickerShotId = shotId
@@ -371,26 +375,7 @@ private fun ShotMapScreen(
             selectedShotId = shotId
         }
     }
-    coordinator.onTapMap = { gps ->
-        if (editMode) run {
-            val hi = editableHoles.indexOfFirst { it.id == holeScore.id }.takeIf { it >= 0 } ?: return@run
-            val seq = (editableHoles[hi].shots.maxOfOrNull { it.sequence } ?: 0) + 1
-            val newShot = Shot(
-                sequence = seq,
-                location = gps,
-                timestamp = java.time.Instant.now().toString(),
-                club = ClubType.UNKNOWN,
-            )
-            editableHoles = editableHoles.toMutableList().also {
-                it[hi] = it[hi].copy(shots = it[hi].shots + newShot, strokes = it[hi].shots.size + 1 + it[hi].putts)
-            }
-            selectedShotId = newShot.id
-            clubPickerShotId = newShot.id
-            clubPickerInitialClub = ClubType.UNKNOWN
-            showClubPicker = true
-            dirty = true
-        }
-    }
+    coordinator.onTapMap = { gps -> if (editMode) pendingTapPoint = gps }
     coordinator.onMoveShot = { shotId, gps -> run {
         val hi = editableHoles.indexOfFirst { it.id == holeScore.id }.takeIf { it >= 0 } ?: return@run
         val si = editableHoles[hi].shots.indexOfFirst { it.id == shotId }.takeIf { it >= 0 } ?: return@run
@@ -404,6 +389,30 @@ private fun ShotMapScreen(
 
     fun holeIndex() = editableHoles.indexOfFirst { it.id == holeScore.id }
 
+    fun confirmPendingTap() {
+        val gps = pendingTapPoint ?: return
+        pendingTapPoint = null
+        val hi = holeIndex().takeIf { it >= 0 } ?: return
+        val existing = editableHoles[hi].shots.sortedBy { it.sequence }
+        val insertAt = coordinator.insertionIndex(gps, existing, courseHole?.greenCenter)
+        val resequenced = existing.toMutableList().also { it.add(insertAt, Shot(
+            sequence = 0,
+            location = gps,
+            timestamp = java.time.Instant.now().toString(),
+            club = ClubType.UNKNOWN,
+        )) }
+        val finalShots = resequenced.mapIndexed { i, s -> s.copy(sequence = i + 1) }
+        val newShot = finalShots[insertAt]
+        editableHoles = editableHoles.toMutableList().also {
+            it[hi] = it[hi].copy(shots = finalShots, strokes = finalShots.size + it[hi].putts)
+        }
+        selectedShotId = newShot.id
+        clubPickerShotId = newShot.id
+        clubPickerInitialClub = ClubType.UNKNOWN
+        showClubPicker = true
+        dirty = true
+    }
+
     fun saveEdits() {
         val updated = round.copy(
             holes = editableHoles,
@@ -413,15 +422,42 @@ private fun ShotMapScreen(
         viewModel.saveRound(updated)
     }
 
-    // Camera + redraw on hole change or initial style load
     LaunchedEffect(holeIdx, styleLoaded) {
         if (!styleLoaded) return@LaunchedEffect
-        coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId, moveCamera = true)
+        coordinator.update(shots, courseHole, holeScore, selectedShotId, moveCamera = true)
+    }
+    LaunchedEffect(shots, selectedShotId) {
+        if (styleLoaded) coordinator.update(shots, courseHole, holeScore, selectedShotId)
     }
 
-    // Redraw on state changes (no camera move)
-    LaunchedEffect(shots, editMode, selectedShotId) {
-        if (styleLoaded) coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
+    if (pendingTapPoint != null) {
+        AlertDialog(
+            onDismissRequest = { pendingTapPoint = null },
+            title = { Text("Add Shot Here?") },
+            confirmButton = {
+                TextButton(onClick = { confirmPendingTap() }) {
+                    Text("Add", color = GolfGreen, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingTapPoint = null }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (showReorderSheet) {
+        ReorderShotsSheet(
+            shots = editableHoles.getOrNull(holeIdx)?.shots?.sortedBy { it.sequence } ?: emptyList(),
+            onConfirm = { reordered ->
+                showReorderSheet = false
+                val hi = holeIndex().takeIf { it >= 0 } ?: return@ReorderShotsSheet
+                editableHoles = editableHoles.toMutableList().also {
+                    it[hi] = it[hi].copy(shots = reordered.mapIndexed { i, s -> s.copy(sequence = i + 1) })
+                }
+                dirty = true
+            },
+            onDismiss = { showReorderSheet = false },
+        )
     }
 
     if (showDeleteConfirm) {
@@ -448,13 +484,13 @@ private fun ShotMapScreen(
     }
 
     if (showClubPicker) {
-        ClubPickerDialog(
-            initial = clubPickerInitialClub,
+        ClubPickerSheet(
+            defaultClub = clubPickerInitialClub,
             onSelect = { club ->
                 showClubPicker = false
-                val sid = clubPickerShotId ?: return@ClubPickerDialog
-                val hi = holeIndex().takeIf { it >= 0 } ?: return@ClubPickerDialog
-                val si = editableHoles[hi].shots.indexOfFirst { it.id == sid }.takeIf { it >= 0 } ?: return@ClubPickerDialog
+                val sid = clubPickerShotId ?: return@ClubPickerSheet
+                val hi = holeIndex().takeIf { it >= 0 } ?: return@ClubPickerSheet
+                val si = editableHoles[hi].shots.indexOfFirst { it.id == sid }.takeIf { it >= 0 } ?: return@ClubPickerSheet
                 editableHoles = editableHoles.toMutableList().also {
                     val shots2 = it[hi].shots.toMutableList()
                     shots2[si] = shots2[si].copy(club = club)
@@ -462,7 +498,7 @@ private fun ShotMapScreen(
                 }
                 dirty = true
             },
-            onDismiss = { showClubPicker = false },
+            onCancel = { showClubPicker = false },
         )
     }
 
@@ -470,13 +506,7 @@ private fun ShotMapScreen(
         AndroidView(
             factory = { ctx ->
                 MapLibre.getInstance(ctx)
-                // Subclass MapView to route touches through coordinator
-                object : MapView(ctx) {
-                    override fun onTouchEvent(event: MotionEvent): Boolean {
-                        if (coordinator.onTouchEvent(event)) return true
-                        return super.onTouchEvent(event)
-                    }
-                }.also { mv ->
+                MapView(ctx).also { mv ->
                     mv.onCreate(null)
                     mv.getMapAsync { mlMap ->
                         coordinator.attach(mlMap)
@@ -530,20 +560,29 @@ private fun ShotMapScreen(
             if (editMode) {
                 Surface(color = Color.Black.copy(alpha = 0.6f)) {
                     Column(Modifier.fillMaxWidth()) {
-                        if (selectedShotId != null) {
-                            Row(
-                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+                        Row(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            TextButton(
+                                onClick = { showReorderSheet = true },
+                                colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
                             ) {
+                                Icon(Icons.Default.SwapVert, null, Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Reorder", fontSize = 12.sp)
+                            }
+                            Spacer(Modifier.weight(1f))
+                            if (selectedShotId != null) {
                                 TextButton(
                                     onClick = { showDeleteConfirm = true },
                                     colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
                                 ) {
                                     Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text("Delete Shot", fontSize = 12.sp)
+                                    Text("Delete", fontSize = 12.sp)
                                 }
-                                Spacer(Modifier.weight(1f))
+                            } else {
                                 Text("Drag pin to move", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
                             }
                         }
@@ -638,37 +677,54 @@ private fun ShotMapScreen(
     }
 }
 
-// ─── Club Picker Dialog ──────────────────────────────────────────────
+// ─── Reorder Shots Sheet ─────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ClubPickerDialog(initial: ClubType, onSelect: (ClubType) -> Unit, onDismiss: () -> Unit) {
-    val clubs = ClubType.entries.filter { it != ClubType.UNKNOWN }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select Club") },
-        text = {
-            androidx.compose.foundation.lazy.LazyColumn {
-                items(clubs) { club ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(club) }
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (club == initial) {
-                            Text("✓", Modifier.width(24.dp), color = GolfGreen, fontWeight = FontWeight.Bold)
-                        } else {
-                            Spacer(Modifier.width(24.dp))
-                        }
-                        Text(club.displayName, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
+private fun ReorderShotsSheet(
+    shots: List<Shot>,
+    onConfirm: (List<Shot>) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var ordered by remember { mutableStateOf(shots) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+            Text("Reorder Shots", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { onConfirm(ordered) }) {
+                Text("Done", color = GolfGreen, fontWeight = FontWeight.Bold)
             }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
+        }
+        LazyColumn(Modifier.padding(horizontal = 16.dp).heightIn(max = 400.dp)) {
+            itemsIndexed(ordered, key = { _, s -> s.id }) { idx, shot ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("${idx + 1}.", Modifier.width(28.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(shot.club.displayName, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    IconButton(
+                        onClick = { if (idx > 0) ordered = ordered.toMutableList().also { it.add(idx - 1, it.removeAt(idx)) } },
+                        enabled = idx > 0,
+                        modifier = Modifier.size(36.dp),
+                    ) { Icon(Icons.Default.KeyboardArrowUp, "Move up", Modifier.size(20.dp)) }
+                    IconButton(
+                        onClick = { if (idx < ordered.size - 1) ordered = ordered.toMutableList().also { it.add(idx + 1, it.removeAt(idx)) } },
+                        enabled = idx < ordered.size - 1,
+                        modifier = Modifier.size(36.dp),
+                    ) { Icon(Icons.Default.KeyboardArrowDown, "Move down", Modifier.size(20.dp)) }
+                }
+                HorizontalDivider(thickness = 0.5.dp)
+            }
+        }
+        Spacer(Modifier.height(32.dp))
+    }
 }
 
 
