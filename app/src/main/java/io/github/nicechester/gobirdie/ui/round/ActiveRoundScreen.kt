@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.ClubType
+import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.GpsPoint
 import io.github.nicechester.gobirdie.core.model.Hole
@@ -449,90 +450,6 @@ private fun defaultClubForDistance(yards: Int?, enabledClubs: List<ClubType>): C
         if (club in enabledClubs && yards >= minDist) return club
     }
     return enabledClubs.last()
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ClubPickerSheet(
-    defaultClub: ClubType,
-    enabledClubs: List<ClubType>,
-    onSelect: (ClubType) -> Unit,
-    onCancel: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val itemHeightDp = 48.dp
-    val visibleItems = 5
-    val initialIndex = enabledClubs.indexOf(defaultClub).coerceAtLeast(0)
-    val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-
-    // Scroll so defaultClub is centered on first composition
-    LaunchedEffect(Unit) {
-        listState.scrollToItem(maxOf(0, initialIndex - visibleItems / 2))
-    }
-
-    // selectedIndex = item snapped to center of the visible window
-    val selectedIndex by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex.coerceIn(0, enabledClubs.lastIndex)
-        }
-    }
-
-    ModalBottomSheet(onDismissRequest = onCancel, sheetState = sheetState) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(onClick = onCancel) { Text("Cancel") }
-            Text("Select Club", style = MaterialTheme.typography.titleMedium)
-            TextButton(onClick = {
-                onSelect(enabledClubs.getOrElse(selectedIndex) { defaultClub })
-            }) {
-                Text("Confirm", color = GolfGreen, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Box(
-            Modifier.fillMaxWidth().height(itemHeightDp * visibleItems),
-            contentAlignment = Alignment.Center,
-        ) {
-            // Selection highlight behind the center row
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(itemHeightDp)
-                    .background(GolfGreen.copy(alpha = 0.12f), MaterialTheme.shapes.small)
-            )
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize().semantics { testTag = "clubPicker" },
-                flingBehavior = rememberSnapFlingBehavior(listState),
-                // top/bottom padding = 2 items so first/last item can reach center
-                contentPadding = PaddingValues(vertical = itemHeightDp * (visibleItems / 2)),
-            ) {
-                itemsIndexed(enabledClubs) { idx, club ->
-                    val isSelected = idx == selectedIndex
-                    Box(
-                        Modifier.fillMaxWidth().height(itemHeightDp)
-                            .clickable {
-                                if (isSelected) onSelect(club)
-                                else scope.launch { listState.animateScrollToItem(idx) }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            club.displayName,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) GolfGreen else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                        )
-                    }
-                }
-            }
-        }
-        Spacer(Modifier.height(32.dp))
-    }
 }
 
 // ─── Move Shots Dialog ───────────────────────────────────────────────

@@ -7,10 +7,9 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression.*
 import org.maplibre.android.style.layers.*
 import org.maplibre.android.style.layers.PropertyFactory.*
+import org.maplibre.android.style.expressions.Expression.*
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.json.JSONArray
 import org.json.JSONObject
@@ -37,15 +36,8 @@ class ShotMapCoordinator(private val context: Context) {
         map.addOnMapClickListener { latLng ->
             if (suppressNextTap) { suppressNextTap = false; return@addOnMapClickListener true }
             val tapped = GpsPoint(latLng.latitude, latLng.longitude)
-            val hit = shots.firstOrNull { s ->
-                val dist = s.location.distanceMeters(tapped)
-                dist < 30.0
-            }
-            if (hit != null) {
-                onTapShot(hit.id)
-            } else {
-                onTapMap(tapped)
-            }
+            val hit = shots.firstOrNull { s -> s.location.distanceMeters(tapped) < 30.0 }
+            if (hit != null) onTapShot(hit.id) else onTapMap(tapped)
             true
         }
 
@@ -123,133 +115,107 @@ class ShotMapCoordinator(private val context: Context) {
         val sortedShots = shots.sortedBy { it.sequence }
 
         // Remove old layers + sources
-        listOf("shot-lines", "shot-pins", "shot-labels", "putt-label").forEach { id ->
+        listOf("shot-lines", "shot-pins", "shot-dist-labels", "shot-putt-label").forEach { id ->
             style.getLayer(id)?.let { style.removeLayer(it) }
         }
-        listOf("shot-lines-src", "shot-pins-src", "shot-labels-src", "putt-label-src").forEach { id ->
+        listOf("shot-lines-src", "shot-pins-src", "shot-dist-labels-src", "shot-putt-label-src").forEach { id ->
             style.getSource(id)?.let { style.removeSource(it) }
         }
 
-        // ── Lines (tee → shots → green) ──
-        val lineFeatures = JSONArray()
+        // ── Lines ──
         data class Pt(val latLng: LatLng, val gps: GpsPoint, val club: ClubType?)
         val chain = mutableListOf<Pt>()
         courseHole?.tee?.let { chain.add(Pt(LatLng(it.lat, it.lon), it, null)) }
         sortedShots.forEach { chain.add(Pt(LatLng(it.location.lat, it.location.lon), it.location, it.club)) }
         courseHole?.greenCenter?.let { chain.add(Pt(LatLng(it.lat, it.lon), it, null)) }
 
+        val lineFeatures = JSONArray()
         for (i in 1 until chain.size) {
             val from = chain[i - 1]; val to = chain[i]
             val club = to.club ?: from.club ?: ClubType.UNKNOWN
-            val coords = JSONArray().apply {
-                put(JSONArray().put(from.latLng.longitude).put(from.latLng.latitude))
-                put(JSONArray().put(to.latLng.longitude).put(to.latLng.latitude))
-            }
             lineFeatures.put(JSONObject().apply {
                 put("type", "Feature")
-                put("geometry", JSONObject().apply { put("type", "LineString"); put("coordinates", coords) })
+                put("geometry", JSONObject().apply {
+                    put("type", "LineString")
+                    put("coordinates", JSONArray().apply {
+                        put(JSONArray().put(from.latLng.longitude).put(from.latLng.latitude))
+                        put(JSONArray().put(to.latLng.longitude).put(to.latLng.latitude))
+                    })
+                })
                 put("properties", JSONObject().apply { put("color", clubColorHex(club)) })
             })
         }
         style.addSource(GeoJsonSource("shot-lines-src", featureCollection(lineFeatures).toString()))
         style.addLayer(LineLayer("shot-lines", "shot-lines-src").apply {
-            setProperties(
-                lineColor(get("color")),
-                lineWidth(3f),
-                lineDasharray(arrayOf(2f, 1.5f)),
-            )
+            setProperties(lineColor(get("color")), lineWidth(3f), lineDasharray(arrayOf(2f, 1.5f)))
         })
 
-        // ── Distance labels at midpoints ──
-        val labelFeatures = JSONArray()
+        // ── Distance label bitmaps at midpoints ──
+        val distFeatures = JSONArray()
         for (i in 1 until chain.size) {
             val from = chain[i - 1]; val to = chain[i]
             val yards = from.gps.distanceYards(to.gps)
             if (yards > 0) {
+                val imgKey = "dist-$yards"
+                if (style.getImage(imgKey) == null)
+                    style.addImage(imgKey, makeLabelBitmap("${yards}y", Color.argb(180, 0, 0, 0)))
                 val mid = LatLng(
                     (from.latLng.latitude + to.latLng.latitude) / 2,
                     (from.latLng.longitude + to.latLng.longitude) / 2,
                 )
-                labelFeatures.put(JSONObject().apply {
+                distFeatures.put(JSONObject().apply {
                     put("type", "Feature")
                     put("geometry", JSONObject().apply {
                         put("type", "Point")
                         put("coordinates", JSONArray().put(mid.longitude).put(mid.latitude))
                     })
-                    put("properties", JSONObject().apply { put("label", "${yards}y") })
+                    put("properties", JSONObject().apply { put("img", imgKey) })
                 })
             }
         }
-        style.addSource(GeoJsonSource("shot-labels-src", featureCollection(labelFeatures).toString()))
-        style.addLayer(SymbolLayer("shot-labels", "shot-labels-src").apply {
-            setProperties(
-                textField(get("label")),
-                textSize(11f),
-                textColor("#FFFFFF"),
-                textHaloColor("#000000"),
-                textHaloWidth(1.5f),
-                textFont(arrayOf("Open Sans Bold", "Arial Unicode MS Bold")),
-            )
+        style.addSource(GeoJsonSource("shot-dist-labels-src", featureCollection(distFeatures).toString()))
+        style.addLayer(SymbolLayer("shot-dist-labels", "shot-dist-labels-src").apply {
+            setProperties(iconImage(get("img")), iconAllowOverlap(true))
         })
 
-        // ── Shot pins ──
+        // ── Shot pin bitmaps ──
         val pinFeatures = JSONArray()
         sortedShots.forEach { s ->
             val isSelected = s.id == selectedShotId
-            val icon = shotIconName(s.club, isSelected)
-            ensureShotIcon(style, s.club, isSelected)
+            val imgKey = "pin-${s.club.name}-${if (isSelected) "sel" else "norm"}"
+            if (style.getImage(imgKey) == null)
+                style.addImage(imgKey, makePinBitmap(s.club, isSelected))
             pinFeatures.put(JSONObject().apply {
                 put("type", "Feature")
                 put("geometry", JSONObject().apply {
                     put("type", "Point")
                     put("coordinates", JSONArray().put(s.location.lon).put(s.location.lat))
                 })
-                put("properties", JSONObject().apply {
-                    put("icon", icon)
-                    put("label", s.club.shortName)
-                    put("shotId", s.id)
-                })
+                put("properties", JSONObject().apply { put("img", imgKey); put("shotId", s.id) })
             })
         }
         style.addSource(GeoJsonSource("shot-pins-src", featureCollection(pinFeatures).toString()))
         style.addLayer(SymbolLayer("shot-pins", "shot-pins-src").apply {
-            setProperties(
-                iconImage(get("icon")),
-                iconAllowOverlap(true),
-                iconSize(1f),
-                textField(get("label")),
-                textSize(10f),
-                textColor("#FFFFFF"),
-                textFont(arrayOf("Open Sans Bold", "Arial Unicode MS Bold")),
-                textOffset(arrayOf(0f, 0f)),
-                textAllowOverlap(true),
-            )
+            setProperties(iconImage(get("img")), iconAllowOverlap(true))
         })
 
         // ── Putt label at green ──
         val putts = holeScore?.putts ?: 0
         if (putts > 0) {
             courseHole?.greenCenter?.let { green ->
-                val puttFeature = JSONObject().apply {
+                val imgKey = "putt-$putts"
+                if (style.getImage(imgKey) == null)
+                    style.addImage(imgKey, makeLabelBitmap("$putts putts", Color.rgb(46, 125, 50)))
+                style.addSource(GeoJsonSource("shot-putt-label-src", featureCollection(JSONArray().put(JSONObject().apply {
                     put("type", "Feature")
                     put("geometry", JSONObject().apply {
                         put("type", "Point")
                         put("coordinates", JSONArray().put(green.lon).put(green.lat))
                     })
-                    put("properties", JSONObject().apply { put("label", "$putts putts") })
-                }
-                style.addSource(GeoJsonSource("putt-label-src",
-                    featureCollection(JSONArray().put(puttFeature)).toString()))
-                style.addLayer(SymbolLayer("putt-label", "putt-label-src").apply {
-                    setProperties(
-                        textField(get("label")),
-                        textSize(11f),
-                        textColor("#FFFFFF"),
-                        textHaloColor("#2E7D32"),
-                        textHaloWidth(2f),
-                        textFont(arrayOf("Open Sans Bold", "Arial Unicode MS Bold")),
-                        textOffset(arrayOf(0f, 2f)),
-                    )
+                    put("properties", JSONObject().apply { put("img", imgKey) })
+                })).toString()))
+                style.addLayer(SymbolLayer("shot-putt-label", "shot-putt-label-src").apply {
+                    setProperties(iconImage(get("img")), iconAllowOverlap(true), iconOffset(arrayOf(0f, 2f)))
                 })
             }
         }
@@ -262,27 +228,43 @@ class ShotMapCoordinator(private val context: Context) {
         return if (idx < 0) existing.size else idx
     }
 
-    private fun ensureShotIcon(mapStyle: Style, club: ClubType, selected: Boolean) {
-        val name = shotIconName(club, selected)
-        if (mapStyle.getImage(name) != null) return
-        val size = 48
+    private fun makePinBitmap(club: ClubType, selected: Boolean): Bitmap {
+        val d = context.resources.displayMetrics.density
+        val size = (40 * d).toInt()
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        val cx = size / 2f; val cy = size / 2f; val r = size / 2f - 2f
+        val cx = size / 2f; val cy = size / 2f; val r = size / 2f - 2f * d
         canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.style = Paint.Style.FILL; color = clubColorInt(club)
+            style = Paint.Style.FILL; color = clubColorInt(club)
         })
         canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.style = Paint.Style.STROKE; color = Color.WHITE; strokeWidth = if (selected) 4f else 2f
+            style = Paint.Style.STROKE; color = Color.WHITE
+            strokeWidth = if (selected) 4f * d else 2f * d
         })
-        if (selected) canvas.drawCircle(cx, cy, r + 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.style = Paint.Style.STROKE; color = Color.WHITE; strokeWidth = 2f
+        if (selected) canvas.drawCircle(cx, cy, r + 3f * d, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE; color = Color.WHITE; strokeWidth = 2f * d
         })
-        mapStyle.addImage(name, bmp)
+        canvas.drawText(club.shortName, cx, cy + 4f * d, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 11f * d; textAlign = Paint.Align.CENTER; isFakeBoldText = true
+        })
+        return bmp
     }
 
-    private fun shotIconName(club: ClubType, selected: Boolean) =
-        "shot-${club.name.lowercase()}${if (selected) "-sel" else ""}"
+    private fun makeLabelBitmap(text: String, bgColor: Int): Bitmap {
+        val d = context.resources.displayMetrics.density
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; textSize = 11f * d; isFakeBoldText = true
+        }
+        val pad = 8f * d
+        val w = (paint.measureText(text) + pad * 2).toInt()
+        val h = (20f * d).toInt()
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), h / 2f, h / 2f,
+            Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bgColor })
+        canvas.drawText(text, pad, h / 2f + 4f * d, paint)
+        return bmp
+    }
 
     private fun clubColorInt(club: ClubType): Int = when (club) {
         ClubType.DRIVER -> Color.RED
@@ -296,10 +278,7 @@ class ShotMapCoordinator(private val context: Context) {
         ClubType.UNKNOWN -> Color.GRAY
     }
 
-    private fun clubColorHex(club: ClubType): String {
-        val c = clubColorInt(club)
-        return "#%06X".format(c and 0xFFFFFF)
-    }
+    private fun clubColorHex(club: ClubType): String = "#%06X".format(clubColorInt(club) and 0xFFFFFF)
 
     private fun featureCollection(features: JSONArray) = JSONObject().apply {
         put("type", "FeatureCollection"); put("features", features)

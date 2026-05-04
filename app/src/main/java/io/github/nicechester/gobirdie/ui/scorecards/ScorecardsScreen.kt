@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.core.model.*
+import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -483,13 +484,13 @@ private fun ShotMapScreen(
     }
 
     if (showClubPicker) {
-        ClubPickerDialog(
-            initial = clubPickerInitialClub,
+        ClubPickerSheet(
+            defaultClub = clubPickerInitialClub,
             onSelect = { club ->
                 showClubPicker = false
-                val sid = clubPickerShotId ?: return@ClubPickerDialog
-                val hi = holeIndex().takeIf { it >= 0 } ?: return@ClubPickerDialog
-                val si = editableHoles[hi].shots.indexOfFirst { it.id == sid }.takeIf { it >= 0 } ?: return@ClubPickerDialog
+                val sid = clubPickerShotId ?: return@ClubPickerSheet
+                val hi = holeIndex().takeIf { it >= 0 } ?: return@ClubPickerSheet
+                val si = editableHoles[hi].shots.indexOfFirst { it.id == sid }.takeIf { it >= 0 } ?: return@ClubPickerSheet
                 editableHoles = editableHoles.toMutableList().also {
                     val shots2 = it[hi].shots.toMutableList()
                     shots2[si] = shots2[si].copy(club = club)
@@ -497,7 +498,7 @@ private fun ShotMapScreen(
                 }
                 dirty = true
             },
-            onDismiss = { showClubPicker = false },
+            onCancel = { showClubPicker = false },
         )
     }
 
@@ -724,39 +725,6 @@ private fun ReorderShotsSheet(
         }
         Spacer(Modifier.height(32.dp))
     }
-}
-
-// ─── Club Picker Dialog ──────────────────────────────────────────────
-
-@Composable
-private fun ClubPickerDialog(initial: ClubType, onSelect: (ClubType) -> Unit, onDismiss: () -> Unit) {
-    val clubs = ClubType.entries.filter { it != ClubType.UNKNOWN }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Select Club") },
-        text = {
-            androidx.compose.foundation.lazy.LazyColumn {
-                items(clubs) { club ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(club) }
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (club == initial) {
-                            Text("✓", Modifier.width(24.dp), color = GolfGreen, fontWeight = FontWeight.Bold)
-                        } else {
-                            Spacer(Modifier.width(24.dp))
-                        }
-                        Text(club.displayName, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
 }
 
 
