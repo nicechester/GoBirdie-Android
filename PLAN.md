@@ -340,6 +340,11 @@ dependencies {
 - [x] **Wrong zoom after delete/Done in edit mode** — Preserve current hole camera position after deleting a shot or tapping Done; don't reset to world zoom
 - [x] **Accidental shot added after dragging** — Set a `suppressNextTap` flag on drag end in `ShotMapCoordinator` to prevent `onTapMap` firing on finger-lift after a drag
 
+#### 2026-05-04
+- [x] **Shot map pins not rendering** — Upgraded MapLibre `11.8.0` → `13.1.0`; rewrote `ShotMapCoordinator` to use `style.addImage()` with Canvas-drawn bitmaps instead of `SymbolLayer` with `textFont`, eliminating the glyph server dependency
+- [x] **Shared club picker** — Extracted `ClubPickerSheet` to `ui/components/` so `ActiveRoundScreen` and `ScorecardsScreen` share the same scroll-snap implementation; bumped font size (`bodyLarge` / `titleLarge` for selected)
+- [x] **Build modernization** — Gradle 9.4.1, AGP 9.2.0, Kotlin 2.3.21, KSP 2.3.7, Hilt 2.59.2, JVM 21; `org.gradle.java.home` moved to `local.properties`
+
 ## Data Compatibility
 
 The JSON format is identical between iOS and Android. A round saved on iOS can be loaded on Android and vice versa. This enables:
