@@ -2,13 +2,18 @@ package io.github.nicechester.gobirdie.ui.scorecards
 
 import android.content.Context
 import android.graphics.*
-import android.view.MotionEvent
 import io.github.nicechester.gobirdie.core.model.*
-import org.maplibre.android.annotations.*
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression.*
+import org.maplibre.android.style.layers.*
+import org.maplibre.android.style.layers.PropertyFactory.*
+import org.maplibre.android.style.sources.GeoJsonSource
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.*
 
 class ShotMapCoordinator(private val context: Context) {
@@ -17,26 +22,69 @@ class ShotMapCoordinator(private val context: Context) {
     private var shots: List<Shot> = emptyList()
     private var courseHole: Hole? = null
     private var holeScore: HoleScore? = null
-    private var editMode: Boolean = false
     private var selectedShotId: String? = null
 
     var onTapShot: (String) -> Unit = {}
     var onTapMap: (GpsPoint) -> Unit = {}
     var onMoveShot: (String, GpsPoint) -> Unit = { _, _ -> }
 
-    // annotation id → shot id
-    private val markerToShot = mutableMapOf<Long, String>()
-    private var draggingShotMarkerId: Long? = null
-    private var draggingDownX = 0f
-    private var draggingDownY = 0f
+    private var draggingShotId: String? = null
     private var suppressNextTap = false
-    private var lastCameraPosition: CameraPosition? = null
 
     fun attach(map: MapLibreMap) {
         this.map = map
+
+        map.addOnMapClickListener { latLng ->
+            if (suppressNextTap) { suppressNextTap = false; return@addOnMapClickListener true }
+            val tapped = GpsPoint(latLng.latitude, latLng.longitude)
+            val hit = shots.firstOrNull { s ->
+                val dist = s.location.distanceMeters(tapped)
+                dist < 30.0
+            }
+            if (hit != null) {
+                onTapShot(hit.id)
+            } else {
+                onTapMap(tapped)
+            }
+            true
+        }
+
+        map.addOnMapLongClickListener { latLng ->
+            val tapped = GpsPoint(latLng.latitude, latLng.longitude)
+            val hit = shots.firstOrNull { s -> s.location.distanceMeters(tapped) < 30.0 }
+            if (hit != null) {
+                draggingShotId = hit.id
+                map.uiSettings.isScrollGesturesEnabled = false
+            }
+            true
+        }
     }
 
-    fun cameraToHole(shots: List<Shot>) {
+    fun onDragEnd(latLng: LatLng) {
+        val sid = draggingShotId ?: return
+        draggingShotId = null
+        suppressNextTap = true
+        map?.uiSettings?.isScrollGesturesEnabled = true
+        onMoveShot(sid, GpsPoint(latLng.latitude, latLng.longitude))
+    }
+
+    fun update(
+        shots: List<Shot>,
+        courseHole: Hole?,
+        holeScore: HoleScore,
+        selectedShotId: String?,
+        moveCamera: Boolean = false,
+    ) {
+        val holeChanged = courseHole != this.courseHole
+        this.shots = shots
+        this.courseHole = courseHole
+        this.holeScore = holeScore
+        this.selectedShotId = selectedShotId
+        redraw()
+        if (moveCamera || holeChanged) cameraToHole()
+    }
+
+    private fun cameraToHole() {
         val m = map ?: return
         val tee = courseHole?.tee
         val green = courseHole?.greenCenter
@@ -49,218 +97,164 @@ class ShotMapCoordinator(private val context: Context) {
             val bearing = (Math.toDegrees(atan2(y, x)) + 360) % 360
             val distMeters = tee.distanceMeters(green)
             val zoom = when {
-                distMeters > 500 -> 15.5
-                distMeters > 300 -> 16.0
-                distMeters > 150 -> 16.5
-                else -> 17.0
+                distMeters > 500 -> 15.5; distMeters > 300 -> 16.0
+                distMeters > 150 -> 16.5; else -> 17.0
             }
             val center = LatLng(
                 (tee.lat + green.lat) / 2 + (green.lat - tee.lat) * 0.1,
                 (tee.lon + green.lon) / 2 + (green.lon - tee.lon) * 0.1,
             )
-            val position = CameraPosition.Builder().target(center).zoom(zoom).bearing(bearing).tilt(0.0).build()
-            lastCameraPosition = position
-            m.animateCamera(CameraUpdateFactory.newCameraPosition(position), 600)
+            m.animateCamera(CameraUpdateFactory.newCameraPosition(
+                CameraPosition.Builder().target(center).zoom(zoom).bearing(bearing).tilt(0.0).build()
+            ), 600)
         } else {
-            val allPoints = shots.map { LatLng(it.location.lat, it.location.lon) }
-            val target = if (allPoints.isNotEmpty())
-                LatLng(allPoints.map { it.latitude }.average(), allPoints.map { it.longitude }.average())
+            val pts = shots.map { LatLng(it.location.lat, it.location.lon) }
+            val target = if (pts.isNotEmpty())
+                LatLng(pts.map { it.latitude }.average(), pts.map { it.longitude }.average())
             else LatLng(0.0, 0.0)
-            val position = CameraPosition.Builder().target(target).zoom(16.0).build()
-            lastCameraPosition = position
-            m.animateCamera(CameraUpdateFactory.newCameraPosition(position), 600)
-        }
-    }
-
-    fun update(
-        shots: List<Shot>,
-        courseHole: Hole?,
-        holeScore: HoleScore,
-        editMode: Boolean,
-        selectedShotId: String?,
-        moveCamera: Boolean = false,
-    ) {
-        val shotsChanged = shots != this.shots
-        val selectionChanged = selectedShotId != this.selectedShotId
-        val editChanged = editMode != this.editMode
-        val holeChanged = courseHole != this.courseHole
-
-        this.shots = shots
-        this.courseHole = courseHole
-        this.holeScore = holeScore
-        this.editMode = editMode
-        this.selectedShotId = selectedShotId
-
-        if (shotsChanged || holeChanged || editChanged || selectionChanged) {
-            redraw()
-        }
-        if (moveCamera || holeChanged) {
-            cameraToHole(shots)
+            m.animateCamera(CameraUpdateFactory.newCameraPosition(
+                CameraPosition.Builder().target(target).zoom(16.0).build()
+            ), 600)
         }
     }
 
     private fun redraw() {
-        val m = map ?: return
-        val savedCamera = lastCameraPosition
-        m.clear()
-        markerToShot.clear()
-
-        val hole = courseHole
+        val style = map?.style ?: return
         val sortedShots = shots.sortedBy { it.sequence }
 
-        // Build chain: tee → shots → green
-        data class ChainPoint(val latLng: LatLng, val gps: GpsPoint, val club: ClubType?)
-        val chain = mutableListOf<ChainPoint>()
-        hole?.tee?.let { chain.add(ChainPoint(LatLng(it.lat, it.lon), it, null)) }
-        sortedShots.forEach { s -> chain.add(ChainPoint(LatLng(s.location.lat, s.location.lon), s.location, s.club)) }
-        hole?.greenCenter?.let { chain.add(ChainPoint(LatLng(it.lat, it.lon), it, null)) }
+        // Remove old layers + sources
+        listOf("shot-lines", "shot-pins", "shot-labels", "putt-label").forEach { id ->
+            style.getLayer(id)?.let { style.removeLayer(it) }
+        }
+        listOf("shot-lines-src", "shot-pins-src", "shot-labels-src", "putt-label-src").forEach { id ->
+            style.getSource(id)?.let { style.removeSource(it) }
+        }
 
-        // Polylines + distance labels
+        // ── Lines (tee → shots → green) ──
+        val lineFeatures = JSONArray()
+        data class Pt(val latLng: LatLng, val gps: GpsPoint, val club: ClubType?)
+        val chain = mutableListOf<Pt>()
+        courseHole?.tee?.let { chain.add(Pt(LatLng(it.lat, it.lon), it, null)) }
+        sortedShots.forEach { chain.add(Pt(LatLng(it.location.lat, it.location.lon), it.location, it.club)) }
+        courseHole?.greenCenter?.let { chain.add(Pt(LatLng(it.lat, it.lon), it, null)) }
+
         for (i in 1 until chain.size) {
-            val from = chain[i - 1]
-            val to = chain[i]
+            val from = chain[i - 1]; val to = chain[i]
             val club = to.club ?: from.club ?: ClubType.UNKNOWN
-            m.addPolyline(
-                PolylineOptions()
-                    .add(from.latLng, to.latLng)
-                    .color(clubColor(club))
-                    .width(3f)
+            val coords = JSONArray().apply {
+                put(JSONArray().put(from.latLng.longitude).put(from.latLng.latitude))
+                put(JSONArray().put(to.latLng.longitude).put(to.latLng.latitude))
+            }
+            lineFeatures.put(JSONObject().apply {
+                put("type", "Feature")
+                put("geometry", JSONObject().apply { put("type", "LineString"); put("coordinates", coords) })
+                put("properties", JSONObject().apply { put("color", clubColorHex(club)) })
+            })
+        }
+        style.addSource(GeoJsonSource("shot-lines-src", featureCollection(lineFeatures).toString()))
+        style.addLayer(LineLayer("shot-lines", "shot-lines-src").apply {
+            setProperties(
+                lineColor(get("color")),
+                lineWidth(3f),
+                lineDasharray(arrayOf(2f, 1.5f)),
             )
+        })
+
+        // ── Distance labels at midpoints ──
+        val labelFeatures = JSONArray()
+        for (i in 1 until chain.size) {
+            val from = chain[i - 1]; val to = chain[i]
             val yards = from.gps.distanceYards(to.gps)
             if (yards > 0) {
                 val mid = LatLng(
                     (from.latLng.latitude + to.latLng.latitude) / 2,
                     (from.latLng.longitude + to.latLng.longitude) / 2,
                 )
-                m.addMarker(
-                    MarkerOptions()
-                        .position(mid)
-                        .icon(distanceLabelIcon("${yards}y"))
-                )
+                labelFeatures.put(JSONObject().apply {
+                    put("type", "Feature")
+                    put("geometry", JSONObject().apply {
+                        put("type", "Point")
+                        put("coordinates", JSONArray().put(mid.longitude).put(mid.latitude))
+                    })
+                    put("properties", JSONObject().apply { put("label", "${yards}y") })
+                })
             }
         }
+        style.addSource(GeoJsonSource("shot-labels-src", featureCollection(labelFeatures).toString()))
+        style.addLayer(SymbolLayer("shot-labels", "shot-labels-src").apply {
+            setProperties(
+                textField(get("label")),
+                textSize(11f),
+                textColor("#FFFFFF"),
+                textHaloColor("#000000"),
+                textHaloWidth(1.5f),
+                textFont(arrayOf("Open Sans Bold", "Arial Unicode MS Bold")),
+            )
+        })
 
-        // Shot markers
+        // ── Shot pins ──
+        val pinFeatures = JSONArray()
         sortedShots.forEach { s ->
             val isSelected = s.id == selectedShotId
-            val marker = m.addMarker(
-                MarkerOptions()
-                    .position(LatLng(s.location.lat, s.location.lon))
-                    .icon(shotIcon(s.club, isSelected))
-            )
-            markerToShot[marker.id] = s.id
+            val icon = shotIconName(s.club, isSelected)
+            ensureShotIcon(style, s.club, isSelected)
+            pinFeatures.put(JSONObject().apply {
+                put("type", "Feature")
+                put("geometry", JSONObject().apply {
+                    put("type", "Point")
+                    put("coordinates", JSONArray().put(s.location.lon).put(s.location.lat))
+                })
+                put("properties", JSONObject().apply {
+                    put("icon", icon)
+                    put("label", s.club.shortName)
+                    put("shotId", s.id)
+                })
+            })
         }
+        style.addSource(GeoJsonSource("shot-pins-src", featureCollection(pinFeatures).toString()))
+        style.addLayer(SymbolLayer("shot-pins", "shot-pins-src").apply {
+            setProperties(
+                iconImage(get("icon")),
+                iconAllowOverlap(true),
+                iconSize(1f),
+                textField(get("label")),
+                textSize(10f),
+                textColor("#FFFFFF"),
+                textFont(arrayOf("Open Sans Bold", "Arial Unicode MS Bold")),
+                textOffset(arrayOf(0f, 0f)),
+                textAllowOverlap(true),
+            )
+        })
 
-        // Putt label at green
+        // ── Putt label at green ──
         val putts = holeScore?.putts ?: 0
         if (putts > 0) {
-            hole?.greenCenter?.let {
-                m.addMarker(
-                    MarkerOptions()
-                        .position(LatLng(it.lat, it.lon))
-                        .icon(puttLabelIcon("$putts putts"))
-                )
+            courseHole?.greenCenter?.let { green ->
+                val puttFeature = JSONObject().apply {
+                    put("type", "Feature")
+                    put("geometry", JSONObject().apply {
+                        put("type", "Point")
+                        put("coordinates", JSONArray().put(green.lon).put(green.lat))
+                    })
+                    put("properties", JSONObject().apply { put("label", "$putts putts") })
+                }
+                style.addSource(GeoJsonSource("putt-label-src",
+                    featureCollection(JSONArray().put(puttFeature)).toString()))
+                style.addLayer(SymbolLayer("putt-label", "putt-label-src").apply {
+                    setProperties(
+                        textField(get("label")),
+                        textSize(11f),
+                        textColor("#FFFFFF"),
+                        textHaloColor("#2E7D32"),
+                        textHaloWidth(2f),
+                        textFont(arrayOf("Open Sans Bold", "Arial Unicode MS Bold")),
+                        textOffset(arrayOf(0f, 2f)),
+                    )
+                })
             }
-        }
-
-        // Restore camera if we have a saved position (prevents world-zoom reset on redraw)
-        if (savedCamera != null) {
-            m.moveCamera(CameraUpdateFactory.newCameraPosition(savedCamera))
         }
     }
 
-    // ── Touch handling (called from MapView.onTouchEvent override) ──
-
-    fun onTouchEvent(event: MotionEvent): Boolean {
-        val m = map ?: return false
-
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                draggingDownX = event.x
-                draggingDownY = event.y
-                val hit = hitTestShot(event.x, event.y)
-                if (hit != null) {
-                    draggingShotMarkerId = hit.first
-                    m.uiSettings.isScrollGesturesEnabled = false
-                    m.uiSettings.isZoomGesturesEnabled = false
-                    return true
-                }
-                return false
-            }
-            MotionEvent.ACTION_MOVE -> {
-                if (draggingShotMarkerId != null) {
-                    // visual drag feedback — move the marker
-                    val coord = m.projection.fromScreenLocation(PointF(event.x, event.y))
-                    m.markers.find { it.id == draggingShotMarkerId }?.position = coord
-                    return true
-                }
-                return false
-            }
-            MotionEvent.ACTION_UP -> {
-                val dx = event.x - draggingDownX
-                val dy = event.y - draggingDownY
-                val moved = sqrt(dx * dx + dy * dy) > 10f
-
-                val dragId = draggingShotMarkerId
-                if (dragId != null) {
-                    m.uiSettings.isScrollGesturesEnabled = true
-                    m.uiSettings.isZoomGesturesEnabled = true
-                    val shotId = markerToShot[dragId]
-                    if (shotId != null) {
-                        if (moved) {
-                            val coord = m.projection.fromScreenLocation(PointF(event.x, event.y))
-                            onMoveShot(shotId, GpsPoint(coord.latitude, coord.longitude))
-                        } else {
-                            onTapShot(shotId)
-                        }
-                    }
-                    draggingShotMarkerId = null
-                    suppressNextTap = moved
-                    return true
-                }
-
-                // Tap on empty map
-                if (!moved && !suppressNextTap) {
-                    val hit = hitTestShot(event.x, event.y)
-                    if (hit != null) {
-                        onTapShot(hit.second)
-                        return true
-                    }
-                    if (editMode) {
-                        val coord = m.projection.fromScreenLocation(PointF(event.x, event.y))
-                        onTapMap(GpsPoint(coord.latitude, coord.longitude))
-                        return true
-                    }
-                }
-                suppressNextTap = false
-                return false
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                draggingShotMarkerId = null
-                map?.uiSettings?.isScrollGesturesEnabled = true
-                map?.uiSettings?.isZoomGesturesEnabled = true
-                return false
-            }
-        }
-        return false
-    }
-
-    private fun hitTestShot(x: Float, y: Float): Pair<Long, String>? {
-        val m = map ?: return null
-        for ((markerId, shotId) in markerToShot) {
-            val marker = m.markers.find { it.id == markerId } ?: continue
-            val px = m.projection.toScreenLocation(marker.position)
-            val dx = px.x - x
-            val dy = px.y - y
-            if (sqrt(dx * dx + dy * dy) < 48f) return Pair(markerId, shotId)
-        }
-        return null
-    }
-
-    /**
-     * Returns the insertion index for a new shot at [newPoint] among [existing] shots,
-     * ordered by progress toward [green]. Shots closer to the green come later in sequence.
-     */
     fun insertionIndex(newPoint: GpsPoint, existing: List<Shot>, green: GpsPoint?): Int {
         if (existing.isEmpty() || green == null) return existing.size
         val newDist = newPoint.distanceMeters(green)
@@ -268,9 +262,29 @@ class ShotMapCoordinator(private val context: Context) {
         return if (idx < 0) existing.size else idx
     }
 
-    // ── Icon factories ──
+    private fun ensureShotIcon(mapStyle: Style, club: ClubType, selected: Boolean) {
+        val name = shotIconName(club, selected)
+        if (mapStyle.getImage(name) != null) return
+        val size = 48
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val cx = size / 2f; val cy = size / 2f; val r = size / 2f - 2f
+        canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.style = Paint.Style.FILL; color = clubColorInt(club)
+        })
+        canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.style = Paint.Style.STROKE; color = Color.WHITE; strokeWidth = if (selected) 4f else 2f
+        })
+        if (selected) canvas.drawCircle(cx, cy, r + 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.style = Paint.Style.STROKE; color = Color.WHITE; strokeWidth = 2f
+        })
+        mapStyle.addImage(name, bmp)
+    }
 
-    private fun clubColor(club: ClubType): Int = when (club) {
+    private fun shotIconName(club: ClubType, selected: Boolean) =
+        "shot-${club.name.lowercase()}${if (selected) "-sel" else ""}"
+
+    private fun clubColorInt(club: ClubType): Int = when (club) {
         ClubType.DRIVER -> Color.RED
         ClubType.WOOD_3, ClubType.WOOD_5 -> Color.rgb(255, 152, 0)
         ClubType.HYBRID_3, ClubType.HYBRID_4, ClubType.HYBRID_5 -> Color.rgb(0, 150, 136)
@@ -282,75 +296,12 @@ class ShotMapCoordinator(private val context: Context) {
         ClubType.UNKNOWN -> Color.GRAY
     }
 
-    private fun shotIcon(club: ClubType, selected: Boolean): Icon {
-        val size = 56
-        val bmp = Bitmap.createBitmap(size + 8, size + 8, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        val cx = bmp.width / 2f
-        val cy = bmp.height / 2f
-
-        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            color = clubColor(club)
-        }
-        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = Color.WHITE
-            strokeWidth = if (selected) 4f else 2f
-        }
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = 26f
-            isFakeBoldText = true
-            textAlign = Paint.Align.CENTER
-        }
-
-        canvas.drawCircle(cx, cy, size / 2f, fillPaint)
-        canvas.drawCircle(cx, cy, size / 2f, strokePaint)
-        if (selected) {
-            strokePaint.strokeWidth = 2f
-            canvas.drawCircle(cx, cy, size / 2f + 4f, strokePaint)
-        }
-        canvas.drawText(club.shortName, cx, cy + 9f, textPaint)
-
-        return IconFactory.getInstance(context).fromBitmap(bmp)
+    private fun clubColorHex(club: ClubType): String {
+        val c = clubColorInt(club)
+        return "#%06X".format(c and 0xFFFFFF)
     }
 
-    private fun distanceLabelIcon(text: String): Icon {
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = 32f
-            isFakeBoldText = true
-            textAlign = Paint.Align.CENTER
-        }
-        val w = textPaint.measureText(text) + 20f
-        val h = 36f
-        val bmp = Bitmap.createBitmap(w.toInt(), h.toInt(), Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(178, 0, 0, 0)
-        }
-        canvas.drawRoundRect(0f, 0f, w, h, 8f, 8f, bgPaint)
-        canvas.drawText(text, w / 2f, h - 8f, textPaint)
-        return IconFactory.getInstance(context).fromBitmap(bmp)
-    }
-
-    private fun puttLabelIcon(text: String): Icon {
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = 32f
-            isFakeBoldText = true
-            textAlign = Paint.Align.CENTER
-        }
-        val w = textPaint.measureText(text) + 20f
-        val h = 40f
-        val bmp = Bitmap.createBitmap(w.toInt(), h.toInt(), Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bmp)
-        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(46, 125, 50)
-        }
-        canvas.drawRoundRect(0f, 0f, w, h, 20f, 20f, bgPaint)
-        canvas.drawText(text, w / 2f, h - 8f, textPaint)
-        return IconFactory.getInstance(context).fromBitmap(bmp)
+    private fun featureCollection(features: JSONArray) = JSONObject().apply {
+        put("type", "FeatureCollection"); put("features", features)
     }
 }

@@ -1,7 +1,5 @@
 package io.github.nicechester.gobirdie.ui.scorecards
 
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,7 +35,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.core.model.*
 import org.maplibre.android.MapLibre
-import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapView
@@ -340,7 +337,6 @@ private fun formatDate(iso: String): String =
 
 // ─── Shot Map Screen ────────────────────────────────────────────────
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ShotMapScreen(
     holes: List<HoleScore>,
@@ -369,7 +365,6 @@ private fun ShotMapScreen(
     val coordinator = remember { ShotMapCoordinator(context) }
     var styleLoaded by remember { mutableStateOf(false) }
 
-    // Wire coordinator callbacks
     coordinator.onTapShot = { shotId ->
         if (selectedShotId == shotId) {
             clubPickerShotId = shotId
@@ -379,9 +374,7 @@ private fun ShotMapScreen(
             selectedShotId = shotId
         }
     }
-    coordinator.onTapMap = { gps ->
-        if (editMode) pendingTapPoint = gps
-    }
+    coordinator.onTapMap = { gps -> if (editMode) pendingTapPoint = gps }
     coordinator.onMoveShot = { shotId, gps -> run {
         val hi = editableHoles.indexOfFirst { it.id == holeScore.id }.takeIf { it >= 0 } ?: return@run
         val si = editableHoles[hi].shots.indexOfFirst { it.id == shotId }.takeIf { it >= 0 } ?: return@run
@@ -428,15 +421,12 @@ private fun ShotMapScreen(
         viewModel.saveRound(updated)
     }
 
-    // Camera + redraw on hole change or initial style load
     LaunchedEffect(holeIdx, styleLoaded) {
         if (!styleLoaded) return@LaunchedEffect
-        coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId, moveCamera = true)
+        coordinator.update(shots, courseHole, holeScore, selectedShotId, moveCamera = true)
     }
-
-    // Redraw on state changes (no camera move)
-    LaunchedEffect(shots, editMode, selectedShotId) {
-        if (styleLoaded) coordinator.update(shots, courseHole, holeScore, editMode, selectedShotId)
+    LaunchedEffect(shots, selectedShotId) {
+        if (styleLoaded) coordinator.update(shots, courseHole, holeScore, selectedShotId)
     }
 
     if (pendingTapPoint != null) {
@@ -517,8 +507,6 @@ private fun ShotMapScreen(
                 MapLibre.getInstance(ctx)
                 MapView(ctx).also { mv ->
                     mv.onCreate(null)
-                    mv.onStart()
-                    mv.onResume()
                     mv.getMapAsync { mlMap ->
                         coordinator.attach(mlMap)
                         val json = """{"version":8,"sources":{"osm":{"type":"raster","tiles":["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],"tileSize":256}},"layers":[{"id":"osm","type":"raster","source":"osm"}]}"""
@@ -531,14 +519,8 @@ private fun ShotMapScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxSize().pointerInteropFilter { event ->
-                coordinator.onTouchEvent(event)
-            },
-            onRelease = { mv ->
-                mv.onPause()
-                mv.onStop()
-                mv.onDestroy()
-            },
+            modifier = Modifier.fillMaxSize(),
+            onRelease = { it.onDestroy() },
         )
 
         // Hole info bar
