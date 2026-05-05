@@ -121,7 +121,17 @@ Enter number of putts with + / − buttons and tap next to move to the next hole
 <table>
 <tr><td valign="top" width="60%">
 
-### Step 10: Navigate Between Holes
+### Step 10: Move Shots to the Correct Hole
+
+If you accidentally recorded shots on the wrong hole, tap the **⋮ menu** and select **Move Shots to Hole...**. Pick the target hole from the list and all shots and putts are moved and re-sequenced automatically.
+
+</td><td valign="top"><img src="screenshots/move-shots-to-hole.png" width="220"></td></tr>
+</table>
+
+<table>
+<tr><td valign="top" width="60%">
+
+### Step 11: Navigate Between Holes
 
 Use the **< >** arrows in the hole info bar to move between holes. You can go back to a previous hole to correct a score if needed. On the last hole, advancing ends the round.
 
@@ -135,7 +145,7 @@ Use the **< >** arrows in the hole info bar to move between holes. You can go ba
 <table>
 <tr><td valign="top" width="60%">
 
-### Step 11: View Past Rounds
+### Step 12: View Past Rounds
 
 Tap the **Scorecards** tab to see all completed rounds. Each card shows the course name, date, total score, and score vs par. Swipe left on a round to delete it.
 
@@ -145,7 +155,7 @@ Tap the **Scorecards** tab to see all completed rounds. Each card shows the cour
 <table>
 <tr><td valign="top"><img src="screenshots/scorecard-detail.png" width="220"></td><td valign="top" width="60%">
 
-### Step 12: Scorecard Detail
+### Step 13: Scorecard Detail
 
 Tap a round to see the full scorecard with Front 9 / Back 9 tables, per-hole breakdown (score, putts, fairway hit), totals, and stats like GIR. Scores are color-coded: green for birdie, orange for bogey, red for double bogey or worse.
 
@@ -155,7 +165,7 @@ Tap a round to see the full scorecard with Front 9 / Back 9 tables, per-hole bre
 <table>
 <tr><td valign="top" width="60%">
 
-### Step 13: Shot Map
+### Step 14: Shot Map
 
 Scroll down in the scorecard detail to see the shot map. Each hole's shots are plotted on the map with club-colored dots, distance lines, and a putt count at the green. The map is rotated to align tee-to-green vertically. Navigate between holes using the **< >** arrows.
 
@@ -165,11 +175,41 @@ Scroll down in the scorecard detail to see the shot map. Each hole's shots are p
 <table>
 <tr><td valign="top"><img src="screenshots/scorecard-shot-map-edit.png" width="220"></td><td valign="top" width="60%">
 
-### Step 14: Edit Shot Map
+### Step 15: Edit Shot Map
 
 Tap **Edit** in the shot map view to adjust shot locations, club selections, or putt count. Drag pins to move shots, tap to select and delete shots, tap on the map to add new shots, and use the **+/−** buttons to adjust putts. Changes are saved when you tap **Done**.
 
 </td></tr>
+</table>
+
+<table>
+<tr><td valign="top" width="60%">
+
+### Step 16: Select & Delete a Shot
+
+In edit mode, tap a shot pin to select it. A **Delete** button appears to remove the selected shot. Tap elsewhere to deselect.
+
+</td><td valign="top"><img src="screenshots/shot-selected.png" width="220"></td></tr>
+</table>
+
+<table>
+<tr><td valign="top"><img src="screenshots/club-change.png" width="220"></td><td valign="top" width="60%">
+
+### Step 17: Change Club on a Shot
+
+Double-tap any shot pin in edit mode to open the club picker and reassign the club used for that shot.
+
+</td></tr>
+</table>
+
+<table>
+<tr><td valign="top" width="60%">
+
+### Step 18: Reorder Shots
+
+Tap **Reorder** in edit mode to open the reorder sheet. Use the up/down arrows to change the sequence of shots, then tap **Done** to apply.
+
+</td><td valign="top"><img src="screenshots/reorder-shots.png" width="220"></td></tr>
 </table>
 
 ---
