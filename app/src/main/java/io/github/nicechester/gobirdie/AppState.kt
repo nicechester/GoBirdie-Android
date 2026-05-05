@@ -266,7 +266,10 @@ class AppState @Inject constructor(
             }
             "cancelRound" -> cancelActiveRound()
             "clubSelection" -> {
-                // Watch selected a club for the last shot — update it
+                val clubRaw = extras["club"] as? String
+                val club = ClubType.entries.firstOrNull { it.serialName.equals(clubRaw, ignoreCase = true) } ?: return
+                val holeNumber = extras["holeNumber"] as? Int ?: return
+                session.updateLastShotClub(holeNumber, club)
                 resetIdleTimer()
             }
         }
