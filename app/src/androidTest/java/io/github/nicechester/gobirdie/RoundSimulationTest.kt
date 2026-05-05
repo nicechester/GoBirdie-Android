@@ -1,9 +1,5 @@
 package io.github.nicechester.gobirdie
 
-import androidx.compose.ui.semantics.getOrNull
-import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.hasAnyDescendant
-import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -124,21 +120,7 @@ class RoundSimulationTest {
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithText("Select Club").fetchSemanticsNodes().isNotEmpty()
         }
-        val recommended = composeRule.onAllNodes(
-            hasAnyDescendant(hasContentDescription("Check"))
-        ).fetchSemanticsNodes()
-        if (recommended.isNotEmpty()) {
-            composeRule.onAllNodes(
-                hasAnyDescendant(hasContentDescription("Check"))
-            ).onFirst().performClick()
-        } else {
-            composeRule.onAllNodes(
-                SemanticsMatcher("club tag") {
-                    it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.TestTag)
-                        ?.startsWith("club_") == true
-                }
-            ).onFirst().performClick()
-        }
+        composeRule.onNodeWithText("Confirm").performClick()
     }
 
     private fun loadCsv(): List<ShotCoord> {

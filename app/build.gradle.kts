@@ -116,10 +116,3 @@ dependencies {
     kspAndroidTest("com.google.dagger:hilt-compiler:2.59.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-
-configurations.all {
-    resolutionStrategy.force(
-        "androidx.test.espresso:espresso-core:3.6.1",
-        "androidx.test:runner:1.6.2"
-    )
-}
