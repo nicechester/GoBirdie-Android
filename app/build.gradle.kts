@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 27
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.2.0"
+        versionCode = 13
+        versionName = "1.2.1"
         testInstrumentationRunner = "io.github.nicechester.gobirdie.HiltTestRunner"
     }
 
@@ -103,20 +103,6 @@ dependencies {
     // Wearable Data Layer (phone side)
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
 
-    configurations.all {
-        resolutionStrategy.force(
-            "androidx.test.espresso:espresso-core:3.6.1",
-            "androidx.test:runner:1.6.2"
-        )
-    }
-
-    configurations.all {
-        resolutionStrategy.force(
-            "androidx.test.espresso:espresso-core:3.6.1",
-            "androidx.test:runner:1.6.2"
-        )
-    }
-
     // Test
     val testComposeBom = platform("androidx.compose:compose-bom:2024.12.01")
     androidTestImplementation(testComposeBom)
@@ -129,4 +115,11 @@ dependencies {
     androidTestImplementation("com.google.dagger:hilt-android-testing:2.59.2")
     kspAndroidTest("com.google.dagger:hilt-compiler:2.59.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+configurations.all {
+    resolutionStrategy.force(
+        "androidx.test.espresso:espresso-core:3.6.1",
+        "androidx.test:runner:1.6.2"
+    )
 }
