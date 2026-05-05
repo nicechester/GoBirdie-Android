@@ -2,6 +2,10 @@ package io.github.nicechester.gobirdie.wear
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.location.Location
 import android.os.Looper
 import com.google.android.gms.location.*
@@ -9,7 +13,6 @@ import com.google.android.gms.wearable.*
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.GpsPoint
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.json.*
 import java.util.Timer
@@ -33,28 +36,30 @@ class WatchRoundSession(private val context: Context) {
     val showClubPicker = MutableStateFlow(false)
     val selectedClub = MutableStateFlow("unknown")
     val clubBag = MutableStateFlow<List<String>>(emptyList())
+    val clubPickerCountdown = MutableStateFlow(15)
 
     private var accumulatedStrokes = 0
     val totalStrokes: Int get() = accumulatedStrokes + strokes.value
 
-    // Heart rate
     val latestHeartRate = MutableStateFlow<Int?>(null)
     private val heartRateSamples = mutableListOf<Map<String, Any>>()
 
-    // Green coordinates for distance computation
     private var greenFront: GpsPoint? = null
     private var greenCenter: GpsPoint? = null
     private var greenBack: GpsPoint? = null
     private var currentLocation: Location? = null
 
-    // Location
     private var fusedClient: FusedLocationProviderClient? = null
     private var locationCallback: LocationCallback? = null
     private var isActive = false
     private var exerciseServiceStarted = false
 
-    // Club picker auto-dismiss timer
     private var clubPickerTimer: Timer? = null
+    private var countdownTimer: Timer? = null
+
+    // Swing detection
+    private var sensorManager: SensorManager? = null
+    private var lastSwingTime = 0L
 
     // ── Public API ──
 
@@ -112,6 +117,7 @@ class WatchRoundSession(private val context: Context) {
     fun finishRound() {
         accumulatedStrokes += strokes.value
         stopLocation()
+        stopSwingDetection()
         stopExerciseService()
         isRoundEnded.value = true
         sendEndRoundToPhone()
@@ -119,6 +125,7 @@ class WatchRoundSession(private val context: Context) {
 
     fun cancelRound() {
         stopLocation()
+        stopSwingDetection()
         stopExerciseService()
         sendCancelRoundToPhone()
         resetToWaiting()
@@ -150,24 +157,52 @@ class WatchRoundSession(private val context: Context) {
     fun confirmClub() {
         if (!showClubPicker.value) return
         clubPickerTimer?.cancel()
+        countdownTimer?.cancel()
         clubPickerTimer = null
+        countdownTimer = null
         showClubPicker.value = false
         sendClubToPhone()
     }
 
+    fun cancelClubPicker() {
+        if (!showClubPicker.value) return
+        clubPickerTimer?.cancel()
+        countdownTimer?.cancel()
+        clubPickerTimer = null
+        countdownTimer = null
+        showClubPicker.value = false
+        strokes.update { maxOf(0, it - 1) }
+        sendStrokesToPhone()
+    }
+
     fun dismissClubPicker() {
         clubPickerTimer?.cancel()
+        countdownTimer?.cancel()
         clubPickerTimer = null
+        countdownTimer = null
         showClubPicker.value = false
+    }
+
+    fun resetClubPickerTimer() {
+        clubPickerTimer?.cancel()
+        countdownTimer?.cancel()
+        clubPickerCountdown.value = 15
+        clubPickerTimer = Timer().apply { schedule(15_000L) { confirmClub() } }
+        countdownTimer = Timer().apply {
+            var remaining = 14
+            schedule(1_000L, 1_000L) {
+                clubPickerCountdown.value = remaining
+                if (remaining-- <= 0) cancel()
+            }
+        }
     }
 
     // ── Message handling (from phone) ──
 
     fun handleMessage(data: Map<String, Any?>) {
-        val action = data["action"] as? String
-        when (action) {
-            "roundCancelled" -> { stopLocation(); resetToWaiting() }
-            "roundEnded" -> { stopLocation(); isRoundEnded.value = true }
+        when (data["action"] as? String) {
+            "roundCancelled" -> { stopLocation(); stopSwingDetection(); resetToWaiting() }
+            "roundEnded" -> { stopLocation(); stopSwingDetection(); isRoundEnded.value = true }
             "strokeUpdate" -> {
                 (data["strokes"] as? Number)?.let { strokes.value = it.toInt() }
                 (data["putts"] as? Number)?.let { putts.value = it.toInt() }
@@ -188,7 +223,6 @@ class WatchRoundSession(private val context: Context) {
         (data["totalHoles"] as? Number)?.let { totalHoles.value = it.toInt() }
             ?: run { totalHoles.value = maxOf(totalHoles.value, holeNumber.value) }
 
-        // Green coordinates
         val frontLat = data["front_lat"] as? Number
         val frontLon = data["front_lon"] as? Number
         if (frontLat != null && frontLon != null) greenFront = GpsPoint(frontLat.toDouble(), frontLon.toDouble())
@@ -216,6 +250,7 @@ class WatchRoundSession(private val context: Context) {
             exerciseServiceStarted = true
             if (!BuildConfig.DEBUG) ExerciseService.start(context)
         }
+        startSwingDetection()
     }
 
     // ── Distance computation ──
@@ -239,7 +274,7 @@ class WatchRoundSession(private val context: Context) {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000).build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                if (hasExerciseLocation) return  // Health Services has taken over
+                if (hasExerciseLocation) return
                 result.lastLocation?.let {
                     currentLocation = it
                     recomputeDistances()
@@ -259,7 +294,6 @@ class WatchRoundSession(private val context: Context) {
 
     private var hasExerciseLocation = false
 
-    // Called by ExerciseService with Health Services GPS data
     fun onExerciseLocation(lat: Double, lon: Double, altitude: Double) {
         hasExerciseLocation = true
         val loc = Location("exercise").apply {
@@ -293,10 +327,17 @@ class WatchRoundSession(private val context: Context) {
     private fun showClubPickerAfterShot() {
         if (clubBag.value.isEmpty()) return
         selectedClub.value = defaultClubForDistance(pinYards.value)
+        clubPickerCountdown.value = 15
         showClubPicker.value = true
         clubPickerTimer?.cancel()
-        clubPickerTimer = Timer().apply {
-            schedule(10_000L) { confirmClub() }
+        countdownTimer?.cancel()
+        clubPickerTimer = Timer().apply { schedule(15_000L) { confirmClub() } }
+        countdownTimer = Timer().apply {
+            var remaining = 14
+            schedule(1_000L, 1_000L) {
+                clubPickerCountdown.value = remaining
+                if (remaining-- <= 0) cancel()
+            }
         }
     }
 
@@ -314,6 +355,38 @@ class WatchRoundSession(private val context: Context) {
             if (club in validClubs && yards >= minDist) return club
         }
         return validClubs.last()
+    }
+
+    // ── Swing detection ──
+
+    private fun startSwingDetection() {
+        if (sensorManager != null) return
+        val sm = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val accel = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        sensorManager = sm
+        sm.registerListener(swingListener, accel, SensorManager.SENSOR_DELAY_GAME)
+    }
+
+    private fun stopSwingDetection() {
+        sensorManager?.unregisterListener(swingListener)
+        sensorManager = null
+    }
+
+    private val swingListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            val x = event.values[0]; val y = event.values[1]; val z = event.values[2]
+            val g = sqrt(x * x + y * y + z * z) / SensorManager.GRAVITY_EARTH
+            if (g <= 8f) return
+            val now = System.currentTimeMillis()
+            if (now - lastSwingTime < 2_000L) return
+            lastSwingTime = now
+            if (showClubPicker.value) {
+                resetClubPickerTimer()
+            } else {
+                markShot()
+            }
+        }
+        override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
     }
 
     // ── Phone messaging ──
@@ -372,7 +445,6 @@ class WatchRoundSession(private val context: Context) {
     private fun sendEndRoundToPhone() {
         val msg = mutableMapOf<String, Any>("action" to "endRound")
         if (heartRateSamples.isNotEmpty()) {
-            // Serialize timeline as JSON array string since sendToPhone only handles primitives
             val timeline = buildJsonArray {
                 heartRateSamples.forEach { sample ->
                     add(buildJsonObject {
@@ -404,7 +476,6 @@ class WatchRoundSession(private val context: Context) {
     }
 }
 
-// Extension to convert DataMap to a simple Map
 private fun DataMap.toMap(): Map<String, Any?> {
     val map = mutableMapOf<String, Any?>()
     for (key in keySet()) {

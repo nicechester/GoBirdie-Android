@@ -1,5 +1,6 @@
 package io.github.nicechester.gobirdie.ui.scorecards
 
+import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -517,6 +518,15 @@ private fun ShotMapScreen(
                             styleLoaded = true
                         }
                         mlMap.uiSettings.isRotateGesturesEnabled = false
+                        mv.setOnTouchListener { _, event ->
+                            if (event.action == android.view.MotionEvent.ACTION_UP) {
+                                val latLng = mlMap.projection.fromScreenLocation(
+                                    android.graphics.PointF(event.x, event.y)
+                                )
+                                coordinator.onDragEnd(latLng)
+                            }
+                            false
+                        }
                     }
                 }
             },
@@ -575,6 +585,18 @@ private fun ShotMapScreen(
                             Spacer(Modifier.weight(1f))
                             if (selectedShotId != null) {
                                 TextButton(
+                                    onClick = {
+                                        clubPickerShotId = selectedShotId
+                                        clubPickerInitialClub = holeScore.shots.firstOrNull { it.id == selectedShotId }?.club ?: ClubType.UNKNOWN
+                                        showClubPicker = true
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+                                ) {
+                                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Club", fontSize = 12.sp)
+                                }
+                                TextButton(
                                     onClick = { showDeleteConfirm = true },
                                     colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
                                 ) {
@@ -583,7 +605,7 @@ private fun ShotMapScreen(
                                     Text("Delete", fontSize = 12.sp)
                                 }
                             } else {
-                                Text("Drag pin to move", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                                Text("Tap a shot to select", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
                             }
                         }
                         // Putts +/-
@@ -635,8 +657,7 @@ private fun ShotMapScreen(
                         ) {
                             Text("Tap map to add shot", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
                             Text("Tap pin to select", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
-                        }
-                    }
+                        }                    }
                 }
             }
 
@@ -687,7 +708,21 @@ private fun ReorderShotsSheet(
     onDismiss: () -> Unit,
 ) {
     var ordered by remember { mutableStateOf(shots) }
+    var clubPickerIdx by remember { mutableStateOf<Int?>(null) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    if (clubPickerIdx != null) {
+        ClubPickerSheet(
+            defaultClub = ordered.getOrNull(clubPickerIdx!!)?.club ?: ClubType.UNKNOWN,
+            onSelect = { club ->
+                val idx = clubPickerIdx!!
+                ordered = ordered.toMutableList().also { it[idx] = it[idx].copy(club = club) }
+                clubPickerIdx = null
+            },
+            onCancel = { clubPickerIdx = null },
+        )
+        return
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Row(
@@ -708,7 +743,12 @@ private fun ReorderShotsSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("${idx + 1}.", Modifier.width(28.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(shot.club.displayName, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        shot.club.displayName,
+                        Modifier.weight(1f).clickable { clubPickerIdx = idx },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = GolfGreen,
+                    )
                     IconButton(
                         onClick = { if (idx > 0) ordered = ordered.toMutableList().also { it.add(idx - 1, it.removeAt(idx)) } },
                         enabled = idx > 0,

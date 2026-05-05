@@ -12,6 +12,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val backStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = backStackEntry?.destination?.route
-                val hasActiveRound = appState.activeSession != null
+                val hasActiveRound = appState.activeSession.collectAsState().value != null
                 this@MainActivity.requestedOrientation = if (hasActiveRound)
                     ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 else

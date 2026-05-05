@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,6 +19,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.*
 import io.github.nicechester.gobirdie.wear.WatchRoundSession
 import kotlin.math.abs
@@ -323,65 +327,74 @@ private fun RoundEndedView(session: WatchRoundSession) {
     }
 }
 
-// ── Club Picker Overlay ──
+// ── Club Picker (full-screen ScalingLazyColumn) ──
 
 @Composable
 private fun ClubPickerOverlay(session: WatchRoundSession) {
     val clubs by session.clubBag.collectAsState()
     val selected by session.selectedClub.collectAsState()
-    var currentIndex by remember(clubs, selected) {
-        mutableIntStateOf(clubs.indexOf(selected).coerceAtLeast(0))
-    }
+    val countdown by session.clubPickerCountdown.collectAsState()
+    val listState = rememberScalingLazyListState(
+        initialCenterItemIndex = clubs.indexOf(selected).coerceAtLeast(0)
+    )
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(currentIndex) {
-        if (clubs.indices.contains(currentIndex)) {
-            session.selectedClub.value = clubs[currentIndex]
+    LaunchedEffect(listState.centerItemIndex) {
+        val club = clubs.getOrNull(listState.centerItemIndex)
+        if (club != null && club != selected) {
+            session.selectedClub.value = club
+            session.resetClubPickerTimer()
         }
     }
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.92f))
+            .background(Color.Black)
             .onRotaryScrollEvent { event ->
                 val delta = if (event.verticalScrollPixels > 0) 1 else -1
-                currentIndex = (currentIndex + delta).coerceIn(0, clubs.size - 1)
+                val idx = (listState.centerItemIndex + delta).coerceIn(0, clubs.lastIndex)
+                scope.launch { listState.animateScrollToItem(idx) }
                 true
             }
             .focusable()
-            .pointerInput(clubs) {
-                var accumulated = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = { accumulated = 0f },
-                    onDragEnd = {
-                        if (accumulated > 40 && currentIndex > 0) currentIndex--
-                        else if (accumulated < -40 && currentIndex < clubs.size - 1) currentIndex++
-                    },
-                    onHorizontalDrag = { _, dragAmount -> accumulated += dragAmount },
-                )
-            },
-        contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(
-                Modifier.fillMaxWidth().height(50.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+        ScalingLazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            items(clubs) { club ->
+                val isSelected = club == selected
                 Text(
-                    if (currentIndex > 0) clubDisplayName(clubs[currentIndex - 1]) else "",
-                    fontSize = 13.sp, color = Color.Gray.copy(alpha = 0.5f),
-                )
-                Text(
-                    clubDisplayName(clubs.getOrElse(currentIndex) { "?" }),
-                    fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GolfGreen,
-                    modifier = Modifier.clickable { session.confirmClub() },
-                )
-                Text(
-                    if (currentIndex < clubs.size - 1) clubDisplayName(clubs[currentIndex + 1]) else "",
-                    fontSize = 13.sp, color = Color.Gray.copy(alpha = 0.5f),
+                    clubDisplayName(club),
+                    fontSize = if (isSelected) 36.sp else 20.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) GolfGreen else Color.Gray,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            session.selectedClub.value = club
+                            session.confirmClub()
+                        }
+                        .padding(vertical = 8.dp),
+                    textAlign = TextAlign.Center,
                 )
             }
+        }
+
+        // Countdown + cancel button
+        Column(
+            Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("${countdown}s", fontSize = 11.sp, color = Color.Gray)
+            Spacer(Modifier.height(4.dp))
+            CompactChip(
+                onClick = { session.cancelClubPicker() },
+                label = { Text("✕ Cancel", fontSize = 11.sp) },
+                colors = ChipDefaults.chipColors(backgroundColor = Color(0xFF8B0000)),
+            )
         }
     }
 }

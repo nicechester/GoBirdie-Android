@@ -127,6 +127,17 @@ class RoundSession(
         }
     }
 
+    fun updateLastShotClub(holeNumber: Int, club: ClubType) {
+        update { holes ->
+            val idx = holes.indexOfFirst { it.number == holeNumber }.takeIf { it >= 0 } ?: return@update
+            val hole = holes[idx]
+            val shots = hole.shots.toMutableList()
+            if (shots.isEmpty()) return@update
+            shots[shots.lastIndex] = shots.last().copy(club = club)
+            holes[idx] = hole.copy(shots = shots)
+        }
+    }
+
     fun snapshot(): Round = _round.value
 
     private fun update(block: (MutableList<HoleScore>) -> Unit) {

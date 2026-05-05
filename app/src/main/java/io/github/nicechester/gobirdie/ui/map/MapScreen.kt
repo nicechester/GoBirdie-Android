@@ -1,14 +1,11 @@
 package io.github.nicechester.gobirdie.ui.map
 
-import android.graphics.PointF
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Canvas
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color as AColor
+import android.graphics.Paint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -18,14 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,16 +27,20 @@ import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.*
 import io.github.nicechester.gobirdie.ui.round.StartRoundScreen
 import io.github.nicechester.gobirdie.ui.round.StartRoundViewModel
+import io.github.nicechester.gobirdie.ui.scorecards.ShotMapCoordinator
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.layers.PropertyFactory.*
+import org.maplibre.android.style.expressions.Expression.*
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.json.JSONArray
 import org.json.JSONObject
@@ -276,29 +271,45 @@ private fun CourseMapView(
     shots: List<Shot>,
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current
+    val coordinator = remember { ShotMapCoordinator(context) }
 
-    // Track map instance and readiness
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
-    var mapView by remember { mutableStateOf<MapView?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
-
-    // Tap state
     var tapPoint by remember { mutableStateOf<GpsPoint?>(null) }
 
     val hole = course.holes.getOrNull(holeIndex)
 
-    // Camera update on hole change
+    // Hole change: update golf layers, camera, shots
     LaunchedEffect(holeIndex, styleLoaded) {
         val map = mapLibreMap ?: return@LaunchedEffect
         if (!styleLoaded) return@LaunchedEffect
         updateGolfLayers(map, hole)
         animateToHole(map, hole, course)
         tapPoint = null
+        coordinator.update(
+            shots = shots,
+            courseHole = hole,
+            holeScore = HoleScore(number = holeIndex + 1, par = hole?.par ?: 4, greenCenter = hole?.greenCenter),
+            selectedShotId = null,
+            moveCamera = false,
+        )
+    }
+
+    // Shot/player/tap overlay updates
+    LaunchedEffect(shots, playerLocation, tapPoint, styleLoaded) {
+        val map = mapLibreMap ?: return@LaunchedEffect
+        if (!styleLoaded) return@LaunchedEffect
+        coordinator.update(
+            shots = shots,
+            courseHole = hole,
+            holeScore = HoleScore(number = holeIndex + 1, par = hole?.par ?: 4, greenCenter = hole?.greenCenter),
+            selectedShotId = null,
+            moveCamera = false,
+        )
+        updatePlayerAndTapLayers(map, playerLocation, tapPoint, hole?.greenCenter)
     }
 
     Box(Modifier.fillMaxSize()) {
-        // MapLibre view
         AndroidView(
             factory = { ctx ->
                 MapLibre.getInstance(ctx)
@@ -308,38 +319,31 @@ private fun CourseMapView(
                 mv.onResume()
                 mv.getMapAsync { mlMap ->
                     mapLibreMap = mlMap
+                    coordinator.attach(mlMap)
                     mlMap.setStyle(Style.Builder().fromUri(osmStyleUri(ctx))) { _ ->
                         styleLoaded = true
                     }
                     mlMap.uiSettings.isRotateGesturesEnabled = false
                     mlMap.addOnMapClickListener { latLng ->
-                        val tapped = GpsPoint(latLng.latitude, latLng.longitude)
-                        tapPoint = tapped
+                        tapPoint = GpsPoint(latLng.latitude, latLng.longitude)
                         true
                     }
                 }
-                mapView = mv
                 mv
             },
             modifier = Modifier.fillMaxSize(),
-            onRelease = {
-                it.onPause()
-                it.onStop()
-                it.onDestroy()
-            },
+            onRelease = { it.onPause(); it.onStop(); it.onDestroy() },
         )
 
-        // Compose overlay for dots and lines
-        if (styleLoaded && mapLibreMap != null) {
-            MapOverlay(
-                map = mapLibreMap!!,
-                mapView = mapView!!,
-                hole = hole,
-                playerLocation = playerLocation,
-                shots = shots,
-                tapPoint = tapPoint,
-                onClearTap = { tapPoint = null },
-            )
+        if (tapPoint != null) {
+            Box(Modifier.fillMaxSize()) {
+                IconButton(
+                    onClick = { tapPoint = null },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp, bottom = 80.dp),
+                ) {
+                    Icon(Icons.Default.Cancel, "Clear", tint = Color.White, modifier = Modifier.size(32.dp))
+                }
+            }
         }
     }
 }
@@ -499,176 +503,126 @@ private fun polygonFeature(polygon: Polygon, type: String): JSONObject {
     return feature
 }
 
-// ─── Compose Overlay ────────────────────────────────────────────────
+// ─── Player dot + tap lines as MapLibre layers ──────────────────────
 
-@Composable
-private fun MapOverlay(
-    map: MapLibreMap,
-    mapView: MapView,
-    hole: Hole?,
-    playerLocation: GpsPoint?,
-    shots: List<Shot>,
-    tapPoint: GpsPoint?,
-    onClearTap: () -> Unit,
-) {
-    val greenCenter = hole?.greenCenter
+private val PLAYER_TAP_LAYERS = listOf("player-dot", "tap-dot", "tap-line-player", "tap-line-green", "player-line-green", "tap-dist-player", "tap-dist-green", "player-dist-green")
+private val PLAYER_TAP_SOURCES = listOf("player-src", "tap-src", "tap-line-player-src", "tap-line-green-src", "player-line-green-src", "tap-dist-player-src", "tap-dist-green-src", "player-dist-green-src")
 
-    // Project GPS points to screen coordinates
-    fun project(gps: GpsPoint): Offset {
-        val px = map.projection.toScreenLocation(LatLng(gps.lat, gps.lon))
-        return Offset(px.x, px.y)
+private fun updatePlayerAndTapLayers(map: MapLibreMap, player: GpsPoint?, tap: GpsPoint?, green: GpsPoint?) {
+    val style = map.style ?: return
+    PLAYER_TAP_LAYERS.forEach { style.getLayer(it)?.let { l -> style.removeLayer(l) } }
+    PLAYER_TAP_SOURCES.forEach { style.getSource(it)?.let { s -> style.removeSource(s) } }
+
+    fun pointFeature(pt: GpsPoint) = JSONObject().apply {
+        put("type", "Feature")
+        put("geometry", JSONObject().apply {
+            put("type", "Point")
+            put("coordinates", JSONArray().put(pt.lon).put(pt.lat))
+        })
+        put("properties", JSONObject())
+    }.toString()
+
+    fun lineFeature(a: GpsPoint, b: GpsPoint) = JSONObject().apply {
+        put("type", "Feature")
+        put("geometry", JSONObject().apply {
+            put("type", "LineString")
+            put("coordinates", JSONArray().apply {
+                put(JSONArray().put(a.lon).put(a.lat))
+                put(JSONArray().put(b.lon).put(b.lat))
+            })
+        })
+        put("properties", JSONObject())
+    }.toString()
+
+    fun midPoint(a: GpsPoint, b: GpsPoint) = GpsPoint((a.lat + b.lat) / 2, (a.lon + b.lon) / 2)
+
+    fun addDistLabel(srcId: String, layerId: String, pt: GpsPoint, yards: Int) {
+        val imgKey = "map-dist-$yards"
+        if (style.getImage(imgKey) == null) style.addImage(imgKey, makeLabelBitmap("${yards}y", AColor.argb(180, 0, 0, 0)))
+        style.addSource(GeoJsonSource(srcId, pointFeature(pt)))
+        style.addLayer(SymbolLayer(layerId, srcId).apply {
+            setProperties(iconImage(literal(imgKey)), iconAllowOverlap(literal(true)))
+        })
     }
 
-    val playerPx = playerLocation?.let { project(it) }
-    val flagPx = greenCenter?.let { project(it) }
-    val tapPx = tapPoint?.let { project(it) }
-    val shotPxList = shots.map { shot -> shot to project(shot.location) }
-
-    // Pulse animation for player dot
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.5f, targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Reverse),
-        label = "pulseScale",
-    )
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.6f, targetValue = 0.0f,
-        animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Reverse),
-        label = "pulseAlpha",
-    )
-
-    val dashedEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))
-
-    Canvas(Modifier.fillMaxSize()) {
-        // Shot connecting lines with distance labels
-        for (i in 1 until shotPxList.size) {
-            val from = shotPxList[i - 1].second
-            val to = shotPxList[i].second
-            drawLine(Color.Yellow.copy(alpha = 0.8f), from, to, strokeWidth = 3f, pathEffect = dashedEffect)
-            val yards = shotPxList[i - 1].first.location.distanceYards(shotPxList[i].first.location)
-            drawDistanceLabel(this, "${yards}y", (from + to) / 2f, Color.Black.copy(alpha = 0.7f))
-        }
-
-        // Last shot → green line
-        if (shotPxList.isNotEmpty() && flagPx != null) {
-            val lastPx = shotPxList.last().second
-            drawLine(GolfGreen.copy(alpha = 0.8f), lastPx, flagPx, strokeWidth = 3f, pathEffect = dashedEffect)
-            val lastShot = shotPxList.last().first
-            if (greenCenter != null) {
-                val yards = lastShot.location.distanceYards(greenCenter)
-                drawDistanceLabel(this, "${yards}y", (lastPx + flagPx) / 2f, GolfGreen.copy(alpha = 0.7f))
-            }
-        }
-
-        // Tap mode lines
-        if (tapPx != null) {
-            if (playerPx != null) {
-                drawLine(Color.White, playerPx, tapPx, strokeWidth = 4f, pathEffect = dashedEffect)
-                if (playerLocation != null && tapPoint != null) {
-                    val yards = playerLocation.distanceYards(tapPoint)
-                    drawDistanceLabel(this, "$yards", (playerPx + tapPx) / 2f, Color.Black.copy(alpha = 0.7f))
-                }
-            }
-            if (flagPx != null) {
-                drawLine(GolfGreen, tapPx, flagPx, strokeWidth = 4f, pathEffect = dashedEffect)
-                if (tapPoint != null && greenCenter != null) {
-                    val yards = tapPoint.distanceYards(greenCenter)
-                    drawDistanceLabel(this, "$yards", (tapPx + flagPx) / 2f, GolfGreen.copy(alpha = 0.7f))
-                }
-            }
-            // Tap dot
-            drawCircle(Color.Red, 10f, tapPx)
-            drawCircle(Color.White, 10f, tapPx, style = androidx.compose.ui.graphics.drawscope.Stroke(2f))
-        } else {
-            // Default: player → green line
-            if (playerPx != null && flagPx != null) {
-                drawLine(Color.White, playerPx, flagPx, strokeWidth = 4f, pathEffect = dashedEffect)
-                if (playerLocation != null && greenCenter != null) {
-                    val yards = playerLocation.distanceYards(greenCenter)
-                    drawDistanceLabel(this, "$yards", (playerPx + flagPx) / 2f, Color.Black.copy(alpha = 0.7f))
-                }
-            }
-        }
-
-        // Shot dots
-        shotPxList.forEach { (shot, px) ->
-            val dotColor = clubColor(shot.club)
-            drawCircle(dotColor, 12f, px)
-            drawCircle(Color.Black.copy(alpha = 0.6f), 12f, px, style = androidx.compose.ui.graphics.drawscope.Stroke(2f))
-        }
-
-        // Flag dot
-        if (flagPx != null) {
-            drawCircle(GolfGreen, 14f, flagPx)
-            drawCircle(Color.White, 14f, flagPx, style = androidx.compose.ui.graphics.drawscope.Stroke(3f))
-        }
-
-        // Player dot with pulse
-        if (playerPx != null) {
-            drawCircle(Color.Blue.copy(alpha = pulseAlpha * 0.25f), 44f * pulseScale, playerPx)
-            drawCircle(Color.Blue, 16f, playerPx)
-            drawCircle(Color.White, 16f, playerPx, style = androidx.compose.ui.graphics.drawscope.Stroke(5f))
-        }
+    // Player dot
+    if (player != null) {
+        val imgKey = "player-dot-img"
+        if (style.getImage(imgKey) == null) style.addImage(imgKey, makePlayerDotBitmap())
+        style.addSource(GeoJsonSource("player-src", pointFeature(player)))
+        style.addLayer(SymbolLayer("player-dot", "player-src").apply {
+            setProperties(iconImage(literal(imgKey)), iconAllowOverlap(literal(true)))
+        })
     }
 
-    // Clear tap button
-    if (tapPoint != null) {
-        Box(Modifier.fillMaxSize()) {
-            IconButton(
-                onClick = onClearTap,
-                modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp, bottom = 80.dp),
-            ) {
-                Icon(
-                    Icons.Default.Cancel, "Clear",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp),
-                )
-            }
+    if (tap != null) {
+        // Tap dot
+        val tapImgKey = "tap-dot-img"
+        if (style.getImage(tapImgKey) == null) style.addImage(tapImgKey, makeTapDotBitmap())
+        style.addSource(GeoJsonSource("tap-src", pointFeature(tap)))
+        style.addLayer(SymbolLayer("tap-dot", "tap-src").apply {
+            setProperties(iconImage(literal(tapImgKey)), iconAllowOverlap(literal(true)))
+        })
+        // Tap → player line
+        if (player != null) {
+            style.addSource(GeoJsonSource("tap-line-player-src", lineFeature(tap, player)))
+            style.addLayer(LineLayer("tap-line-player", "tap-line-player-src").apply {
+                setProperties(lineColor(literal("#FFFFFF")), lineWidth(literal(3f)), lineDasharray(arrayOf(2f, 1.5f)))
+            })
+            addDistLabel("tap-dist-player-src", "tap-dist-player", midPoint(tap, player), tap.distanceYards(player))
         }
+        // Tap → green line
+        if (green != null) {
+            style.addSource(GeoJsonSource("tap-line-green-src", lineFeature(tap, green)))
+            style.addLayer(LineLayer("tap-line-green", "tap-line-green-src").apply {
+                setProperties(lineColor(literal("#2E7D32")), lineWidth(literal(3f)), lineDasharray(arrayOf(2f, 1.5f)))
+            })
+            addDistLabel("tap-dist-green-src", "tap-dist-green", midPoint(tap, green), tap.distanceYards(green))
+        }
+    } else if (player != null && green != null) {
+        // Default: player → green line
+        style.addSource(GeoJsonSource("player-line-green-src", lineFeature(player, green)))
+        style.addLayer(LineLayer("player-line-green", "player-line-green-src").apply {
+            setProperties(lineColor(literal("#FFFFFF")), lineWidth(literal(3f)), lineDasharray(arrayOf(2f, 1.5f)))
+        })
+        addDistLabel("player-dist-green-src", "player-dist-green", midPoint(player, green), player.distanceYards(green))
     }
 }
 
-private fun clubColor(club: ClubType): Color = when (club) {
-    ClubType.DRIVER -> Color.Red
-    ClubType.WOOD_3, ClubType.WOOD_5 -> Color(0xFFFF9800)
-    ClubType.HYBRID_3, ClubType.HYBRID_4, ClubType.HYBRID_5 -> Color(0xFF009688)
-    ClubType.IRON_4, ClubType.IRON_5, ClubType.IRON_6, ClubType.IRON_7, ClubType.IRON_8, ClubType.IRON_9 -> Color.Yellow
-    ClubType.PITCHING_WEDGE, ClubType.GAP_WEDGE, ClubType.SAND_WEDGE, ClubType.LOB_WEDGE -> Color.Cyan
-    ClubType.PUTTER -> Color.White
-    ClubType.UNKNOWN -> Color.Gray
+private fun makePlayerDotBitmap(): Bitmap {
+    val size = 48
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val cx = size / 2f; val cy = size / 2f; val r = size / 2f - 4f
+    canvas.drawCircle(cx, cy, r * 1.8f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AColor.argb(60, 0, 0, 255) })
+    canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AColor.BLUE })
+    canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; color = AColor.WHITE; strokeWidth = 4f
+    })
+    return bmp
 }
 
-private fun drawDistanceLabel(scope: DrawScope, text: String, center: Offset, bgColor: Color) {
-    val paint = android.graphics.Paint().apply {
-        color = android.graphics.Color.WHITE
-        textSize = 44f
-        isFakeBoldText = true
-        textAlign = android.graphics.Paint.Align.CENTER
-        isAntiAlias = true
-    }
-    val bgPaint = android.graphics.Paint().apply {
-        color = (bgColor.copy(alpha = 0.8f)).toArgb()
-        isAntiAlias = true
-    }
-    val textWidth = paint.measureText(text)
-    val padding = 8f
-    scope.drawContext.canvas.nativeCanvas.apply {
-        drawRoundRect(
-            center.x - textWidth / 2 - padding,
-            center.y - 16f,
-            center.x + textWidth / 2 + padding,
-            center.y + 14f,
-            8f, 8f, bgPaint,
-        )
-        drawText(text, center.x, center.y + 8f, paint)
-    }
+private fun makeTapDotBitmap(): Bitmap {
+    val size = 32
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val cx = size / 2f; val cy = size / 2f; val r = size / 2f - 3f
+    canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AColor.RED })
+    canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; color = AColor.WHITE; strokeWidth = 3f
+    })
+    return bmp
 }
 
-private fun Color.toArgb(): Int {
-    return android.graphics.Color.argb(
-        (alpha * 255).toInt(),
-        (red * 255).toInt(),
-        (green * 255).toInt(),
-        (blue * 255).toInt(),
-    )
+private fun makeLabelBitmap(text: String, bgColor: Int): Bitmap {
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AColor.WHITE; textSize = 36f; isFakeBoldText = true }
+    val pad = 12f
+    val w = (paint.measureText(text) + pad * 2).toInt()
+    val h = 48
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), h / 2f, h / 2f,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bgColor })
+    canvas.drawText(text, pad, h / 2f + 12f, paint)
+    return bmp
 }

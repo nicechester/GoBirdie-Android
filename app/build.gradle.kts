@@ -98,7 +98,7 @@ dependencies {
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 
     // MapLibre
-    implementation("org.maplibre.gl:android-sdk:13.1.0")
+    implementation("org.maplibre.gl:android-sdk-opengl:13.1.0")
 
     // Wearable Data Layer (phone side)
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
