@@ -206,6 +206,8 @@ class AppState @Inject constructor(
             totalStrokes = round.totalStrokes,
             totalHoles = course.holes.size,
             enabledClubs = enabledClubs,
+            currentStrokes = round.holes.getOrNull(holeIdx)?.strokes ?: 0,
+            currentPutts = round.holes.getOrNull(holeIdx)?.putts ?: 0,
         )
     }
 
@@ -213,8 +215,15 @@ class AppState @Inject constructor(
         holeObserverJob?.cancel()
         holeObserverJob = viewModelScope.launch {
             val session = _activeSession.value ?: return@launch
-            session.currentHoleIndex.collect {
-                sendHoleDataToWatch()
+            launch {
+                session.currentHoleIndex.collect {
+                    sendHoleDataToWatch()
+                }
+            }
+            launch {
+                session.round.collect {
+                    sendHoleDataToWatch()
+                }
             }
         }
     }

@@ -239,8 +239,8 @@ class WatchRoundSession(private val context: Context) {
         val clubs = data["clubBag"] as? List<String>
         if (!clubs.isNullOrEmpty()) clubBag.value = clubs
 
-        strokes.value = 0
-        putts.value = 0
+        (data["currentStrokes"] as? Number)?.let { strokes.value = it.toInt() } ?: run { strokes.value = 0 }
+        (data["currentPutts"] as? Number)?.let { putts.value = it.toInt() } ?: run { putts.value = 0 }
         hasHoleData.value = true
         isRoundEnded.value = false
         recomputeDistances()

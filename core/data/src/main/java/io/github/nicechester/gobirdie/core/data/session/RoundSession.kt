@@ -127,14 +127,50 @@ class RoundSession(
         }
     }
 
-    fun updateLastShotClub(holeNumber: Int, club: ClubType) {
+    fun updateLastShotClub(holeNumber: Int, club: ClubType, shotId: String? = null) {
         update { holes ->
             val idx = holes.indexOfFirst { it.number == holeNumber }.takeIf { it >= 0 } ?: return@update
             val hole = holes[idx]
             val shots = hole.shots.toMutableList()
             if (shots.isEmpty()) return@update
-            shots[shots.lastIndex] = shots.last().copy(club = club)
+            val si = if (shotId != null) shots.indexOfFirst { it.id == shotId }.takeIf { it >= 0 } ?: shots.lastIndex else shots.lastIndex
+            shots[si] = shots[si].copy(club = club)
             holes[idx] = hole.copy(shots = shots)
+        }
+    }
+
+    fun insertShot(holeNumber: Int, location: GpsPoint, atIndex: Int) {
+        update { holes ->
+            val idx = holes.indexOfFirst { it.number == holeNumber }.takeIf { it >= 0 } ?: return@update
+            val existing = holes[idx].shots.sortedBy { it.sequence }.toMutableList()
+            existing.add(atIndex.coerceIn(0, existing.size), Shot(
+                sequence = 0,
+                location = location,
+                timestamp = java.time.Instant.now().toString(),
+                club = ClubType.UNKNOWN,
+            ))
+            val resequenced = existing.mapIndexed { i, s -> s.copy(sequence = i + 1) }
+            holes[idx] = holes[idx].copy(shots = resequenced, strokes = resequenced.size + holes[idx].putts)
+        }
+    }
+
+    fun updateShotLocation(holeNumber: Int, shotId: String, location: GpsPoint) {
+        update { holes ->
+            val idx = holes.indexOfFirst { it.number == holeNumber }.takeIf { it >= 0 } ?: return@update
+            val shots = holes[idx].shots.toMutableList()
+            val si = shots.indexOfFirst { it.id == shotId }.takeIf { it >= 0 } ?: return@update
+            shots[si] = shots[si].copy(location = location)
+            holes[idx] = holes[idx].copy(shots = shots)
+        }
+    }
+
+    fun deleteShot(holeNumber: Int, shotId: String) {
+        update { holes ->
+            val idx = holes.indexOfFirst { it.number == holeNumber }.takeIf { it >= 0 } ?: return@update
+            val updatedShots = holes[idx].shots
+                .filter { it.id != shotId }
+                .mapIndexed { i, s -> s.copy(sequence = i + 1) }
+            holes[idx] = holes[idx].copy(shots = updatedShots, strokes = updatedShots.size + holes[idx].putts)
         }
     }
 

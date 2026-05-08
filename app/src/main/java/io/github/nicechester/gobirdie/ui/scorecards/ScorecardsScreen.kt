@@ -519,12 +519,7 @@ private fun ShotMapScreen(
                         }
                         mlMap.uiSettings.isRotateGesturesEnabled = false
                         mv.setOnTouchListener { _, event ->
-                            if (event.action == android.view.MotionEvent.ACTION_UP) {
-                                val latLng = mlMap.projection.fromScreenLocation(
-                                    android.graphics.PointF(event.x, event.y)
-                                )
-                                coordinator.onDragEnd(latLng)
-                            }
+                            coordinator.onTouchEvent(event)
                             false
                         }
                     }

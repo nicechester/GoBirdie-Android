@@ -310,6 +310,11 @@ private fun RoundEndedView(session: WatchRoundSession) {
     val strokesVal by session.strokes.collectAsState()
     val totalDisplay = remember(strokesVal) { session.totalStrokes }
 
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(5_000L)
+        session.resetToWaiting()
+    }
+
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("⛳", fontSize = 28.sp)
@@ -363,6 +368,7 @@ private fun ClubPickerOverlay(session: WatchRoundSession) {
             state = listState,
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
+            autoCentering = androidx.wear.compose.foundation.lazy.AutoCenteringParams(itemIndex = 0),
         ) {
             items(clubs) { club ->
                 val isSelected = club == selected
