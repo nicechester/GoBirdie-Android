@@ -22,6 +22,8 @@ class WearConnectivityService(private val context: Context) {
         totalStrokes: Int,
         totalHoles: Int = 18,
         enabledClubs: List<ClubType> = emptyList(),
+        currentStrokes: Int = 0,
+        currentPutts: Int = 0,
     ) {
         val json = buildJsonObject {
             put("holeNumber", holeNumber)
@@ -29,6 +31,8 @@ class WearConnectivityService(private val context: Context) {
             put("courseName", courseName)
             put("totalStrokes", totalStrokes)
             put("totalHoles", totalHoles)
+            put("currentStrokes", currentStrokes)
+            put("currentPutts", currentPutts)
             putJsonArray("clubBag") {
                 enabledClubs.forEach { club ->
                     add(club.serialName)

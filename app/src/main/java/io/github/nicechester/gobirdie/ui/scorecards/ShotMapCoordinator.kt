@@ -52,6 +52,25 @@ class ShotMapCoordinator(private val context: Context) {
         }
     }
 
+    /** Call from a View.OnTouchListener on ACTION_MOVE and ACTION_UP. */
+    fun onTouchEvent(event: android.view.MotionEvent) {
+        val m = map ?: return
+        when (event.action) {
+            android.view.MotionEvent.ACTION_MOVE -> {
+                if (draggingShotId == null) return
+                val latLng = m.projection.fromScreenLocation(android.graphics.PointF(event.x, event.y))
+                onMoveShot(draggingShotId!!, GpsPoint(latLng.latitude, latLng.longitude))
+            }
+            android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                if (draggingShotId != null) {
+                    draggingShotId = null
+                    suppressNextTap = true
+                    m.uiSettings.isScrollGesturesEnabled = true
+                }
+            }
+        }
+    }
+
     fun onDragEnd(latLng: LatLng) {
         val sid = draggingShotId ?: return
         draggingShotId = null

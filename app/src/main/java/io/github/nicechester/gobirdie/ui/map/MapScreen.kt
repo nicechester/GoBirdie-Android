@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color as AColor
 import android.graphics.Paint
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,9 +17,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -25,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
 import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.*
+import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import io.github.nicechester.gobirdie.ui.round.StartRoundScreen
 import io.github.nicechester.gobirdie.ui.round.StartRoundViewModel
 import io.github.nicechester.gobirdie.ui.scorecards.ShotMapCoordinator
@@ -192,6 +197,17 @@ private fun MapActiveView(session: RoundSession, course: Course, appState: AppSt
     val playerLocation by appState.locationService.location.collectAsState()
     val hole = course.holes.getOrNull(holeIndex)
     val holeScore = round.holes.getOrNull(holeIndex)
+    var showShotEdit by remember { mutableStateOf(false) }
+
+    if (showShotEdit && holeScore != null && hole != null) {
+        ActiveRoundShotEditor(
+            session = session,
+            holeScore = holeScore,
+            courseHole = hole,
+            onDismiss = { showShotEdit = false },
+        )
+        return
+    }
 
     Box(Modifier.fillMaxSize()) {
         CourseMapView(
@@ -209,6 +225,18 @@ private fun MapActiveView(session: RoundSession, course: Course, appState: AppSt
             onNext = { session.navigateTo(session.currentHoleNumber + 1) },
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp),
         )
+
+        if (holeScore != null && holeScore.shots.isNotEmpty()) {
+            IconButton(
+                onClick = { showShotEdit = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp, bottom = 24.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), shape = androidx.compose.foundation.shape.CircleShape)
+            ) {
+                Icon(Icons.Default.Edit, "Edit shots", tint = Color.White, modifier = Modifier.size(22.dp))
+            }
+        }
     }
 }
 
@@ -261,6 +289,180 @@ private fun HoleInfoBar(
     }
 }
 
+// ─── Active Round Shot Editor ───────────────────────────────────────
+
+@Composable
+private fun ActiveRoundShotEditor(
+    session: RoundSession,
+    holeScore: HoleScore,
+    courseHole: Hole,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val coordinator = remember { ShotMapCoordinator(context) }
+    var styleLoaded by remember { mutableStateOf(false) }
+    var selectedShotId by remember { mutableStateOf<String?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showClubPicker by remember { mutableStateOf(false) }
+    var clubPickerShotId by remember { mutableStateOf<String?>(null) }
+    var pendingTapPoint by remember { mutableStateOf<GpsPoint?>(null) }
+
+    val shots = holeScore.shots.sortedBy { it.sequence }
+
+    coordinator.onTapShot = { selectedShotId = it }
+    coordinator.onTapMap = { gps -> pendingTapPoint = gps }
+    coordinator.onMoveShot = { shotId, gps ->
+        session.updateShotLocation(holeScore.number, shotId, gps)
+    }
+
+    LaunchedEffect(styleLoaded) {
+        if (styleLoaded) coordinator.update(shots, courseHole, holeScore, selectedShotId, moveCamera = true)
+    }
+    LaunchedEffect(shots, selectedShotId) {
+        if (styleLoaded) coordinator.update(shots, courseHole, holeScore, selectedShotId)
+    }
+
+    if (pendingTapPoint != null) {
+        AlertDialog(
+            onDismissRequest = { pendingTapPoint = null },
+            title = { Text("Add Shot Here?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val gps = pendingTapPoint ?: return@TextButton
+                    pendingTapPoint = null
+                    val existing = holeScore.shots.sortedBy { it.sequence }
+                    val insertAt = coordinator.insertionIndex(gps, existing, courseHole.greenCenter)
+                    session.insertShot(holeScore.number, gps, insertAt)
+                    // find the newly inserted shot and open club picker
+                    val newShot = session.currentHole?.shots
+                        ?.sortedBy { it.sequence }
+                        ?.getOrNull(insertAt)
+                    if (newShot != null) {
+                        clubPickerShotId = newShot.id
+                        showClubPicker = true
+                    }
+                }) { Text("Add", color = GolfGreen, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = { TextButton(onClick = { pendingTapPoint = null }) { Text("Cancel") } },
+        )
+    }
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete this shot?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    val sid = selectedShotId ?: return@TextButton
+                    session.deleteShot(holeScore.number, sid)
+                    selectedShotId = null
+                }) { Text("Delete", color = Color.Red) }
+            },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+        )
+    }
+
+    if (showClubPicker) {
+        ClubPickerSheet(
+            defaultClub = shots.firstOrNull { it.id == clubPickerShotId }?.club ?: ClubType.UNKNOWN,
+            onSelect = { club ->
+                showClubPicker = false
+                val sid = clubPickerShotId ?: return@ClubPickerSheet
+                session.updateLastShotClub(holeScore.number, club, sid)
+            },
+            onCancel = { showClubPicker = false },
+        )
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { ctx ->
+                MapLibre.getInstance(ctx)
+                MapView(ctx).also { mv ->
+                    mv.onCreate(null)
+                    mv.onStart()
+                    mv.onResume()
+                    mv.getMapAsync { mlMap ->
+                        coordinator.attach(mlMap)
+                        mlMap.setStyle(Style.Builder().fromUri(osmStyleUri(ctx))) {
+                            styleLoaded = true
+                        }
+                        mlMap.uiSettings.isRotateGesturesEnabled = false
+                        mv.setOnTouchListener { _, event ->
+                            coordinator.onTouchEvent(event)
+                            false
+                        }
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize(),
+            onRelease = { it.onPause(); it.onStop(); it.onDestroy() },
+        )
+
+        // Top bar
+        Surface(
+            Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp).fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Black.copy(alpha = 0.6f),
+        ) {
+            Row(
+                Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Hole ${courseHole.number} · Edit Shots", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+            }
+        }
+
+        // Bottom toolbar
+        Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
+            if (selectedShotId != null) {
+                Surface(color = Color.Black.copy(alpha = 0.7f)) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        TextButton(
+                            onClick = { clubPickerShotId = selectedShotId; showClubPicker = true },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+                        ) {
+                            Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Club", fontSize = 12.sp)
+                        }
+                        TextButton(
+                            onClick = { showDeleteConfirm = true },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Red),
+                        ) {
+                            Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Delete", fontSize = 12.sp)
+                        }
+                        TextButton(
+                            onClick = { selectedShotId = null },
+                            colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray),
+                        ) {
+                            Text("Deselect", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Black.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.Close, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Done")
+                }
+            }
+        }
+    }
+}
+
 // ─── Course Map View (MapLibre + Overlay) ───────────────────────────
 
 @Composable
@@ -276,6 +478,7 @@ private fun CourseMapView(
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleLoaded by remember { mutableStateOf(false) }
     var tapPoint by remember { mutableStateOf<GpsPoint?>(null) }
+    var cameraVersion by remember { mutableIntStateOf(0) }
 
     val hole = course.holes.getOrNull(holeIndex)
 
@@ -324,6 +527,7 @@ private fun CourseMapView(
                         styleLoaded = true
                     }
                     mlMap.uiSettings.isRotateGesturesEnabled = false
+                    mlMap.addOnCameraIdleListener { cameraVersion++ }
                     mlMap.addOnMapClickListener { latLng ->
                         tapPoint = GpsPoint(latLng.latitude, latLng.longitude)
                         true
@@ -343,6 +547,29 @@ private fun CourseMapView(
                 ) {
                     Icon(Icons.Default.Cancel, "Clear", tint = Color.White, modifier = Modifier.size(32.dp))
                 }
+            }
+        }
+
+        // Animated pulse overlay for player dot
+        if (playerLocation != null && mapLibreMap != null) {
+            val map = mapLibreMap!!
+            val px = remember(playerLocation, cameraVersion) {
+                map.projection.toScreenLocation(LatLng(playerLocation.lat, playerLocation.lon))
+                    .let { Offset(it.x, it.y) }
+            }
+            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+            val pulseRadius by infiniteTransition.animateFloat(
+                initialValue = 24f, targetValue = 52f,
+                animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart),
+                label = "pulseRadius",
+            )
+            val pulseAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.4f, targetValue = 0f,
+                animationSpec = infiniteRepeatable(tween(1500, easing = LinearEasing), RepeatMode.Restart),
+                label = "pulseAlpha",
+            )
+            Canvas(Modifier.fillMaxSize()) {
+                drawCircle(Color(0xFF2196F3), pulseRadius, px, alpha = pulseAlpha)
             }
         }
     }
