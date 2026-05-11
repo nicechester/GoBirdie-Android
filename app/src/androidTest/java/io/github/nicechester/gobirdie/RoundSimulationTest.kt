@@ -61,7 +61,6 @@ class RoundSimulationTest {
 
         composeRule.onNodeWithTag("searchField").performTextInput("Roosevelt")
         composeRule.onNodeWithTag("searchField").performImeAction()
-        device.pressBack()
 
         composeRule.waitUntil(10_000) {
             composeRule.onAllNodesWithText("Roosevelt Golf Course").fetchSemanticsNodes().isNotEmpty()
@@ -97,6 +96,7 @@ class RoundSimulationTest {
             appState.locationService.setTestLocation(lat, lon)
         }
         composeRule.waitForIdle()
+        Thread.sleep(300)
     }
 
     private fun playHole(holeNumber: Int, holeShots: List<ShotCoord>) {

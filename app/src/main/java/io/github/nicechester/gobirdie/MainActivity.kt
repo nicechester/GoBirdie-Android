@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val appState = ViewModelProvider(this).get(AppState::class.java)
+        appState.snapshotManager.attach(this)
 
         setContent {
             GoBirdieTheme {

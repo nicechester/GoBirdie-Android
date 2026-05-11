@@ -6,18 +6,26 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.graphics.BitmapFactory
 import android.location.Location
 import android.os.Looper
+import android.util.Log
 import com.google.android.gms.location.*
 import com.google.android.gms.wearable.*
+import io.github.nicechester.gobirdie.wear.BuildConfig
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.GpsPoint
+import io.github.nicechester.gobirdie.core.model.HoleMapMeta
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import java.io.File
 import java.util.Timer
 import kotlin.concurrent.schedule
 import kotlin.math.*
+
+private const val TAG = "WatchRoundSession"
 
 class WatchRoundSession(private val context: Context) {
 
@@ -47,7 +55,13 @@ class WatchRoundSession(private val context: Context) {
     private var greenFront: GpsPoint? = null
     private var greenCenter: GpsPoint? = null
     private var greenBack: GpsPoint? = null
-    private var currentLocation: Location? = null
+    val mapAvailableHoles = MutableStateFlow<Set<Int>>(emptySet())
+    val holeMapMeta = mutableMapOf<Int, HoleMapMeta>()
+    val currentLocationFlow = MutableStateFlow<Location?>(null)
+
+    private var currentLocation: Location?
+        get() = currentLocationFlow.value
+        set(value) { currentLocationFlow.value = value }
 
     private var fusedClient: FusedLocationProviderClient? = null
     private var locationCallback: LocationCallback? = null
@@ -149,6 +163,9 @@ class WatchRoundSession(private val context: Context) {
         greenBack = null
         latestHeartRate.value = null
         heartRateSamples.clear()
+        mapAvailableHoles.value = emptySet()
+        holeMapMeta.clear()
+        File(context.filesDir, "maps").deleteRecursively()
         hasExerciseLocation = false
         dismissClubPicker()
         clubBag.value = emptyList()
@@ -200,6 +217,7 @@ class WatchRoundSession(private val context: Context) {
     // ── Message handling (from phone) ──
 
     fun handleMessage(data: Map<String, Any?>) {
+        if (BuildConfig.DEBUG) Log.d(TAG, "handleMessage: action=${data["action"]}")
         when (data["action"] as? String) {
             "roundCancelled" -> { stopLocation(); stopSwingDetection(); resetToWaiting() }
             "roundEnded" -> { stopLocation(); stopSwingDetection(); isRoundEnded.value = true }
@@ -216,6 +234,7 @@ class WatchRoundSession(private val context: Context) {
     }
 
     private fun handleHoleData(data: Map<String, Any?>) {
+        if (BuildConfig.DEBUG) Log.d(TAG, "handleHoleData: hole=${data["holeNumber"]} course=${data["courseName"]}")
         (data["holeNumber"] as? Number)?.let { holeNumber.value = it.toInt() }
         (data["par"] as? Number)?.let { par.value = it.toInt() }
         (data["courseName"] as? String)?.let { courseName.value = it }
@@ -251,6 +270,28 @@ class WatchRoundSession(private val context: Context) {
             if (!BuildConfig.DEBUG) ExerciseService.start(context)
         }
         startSwingDetection()
+    }
+
+    fun onMapReceived(holeNumber: Int) {
+        if (BuildConfig.DEBUG) Log.d(TAG, "onMapReceived: hole=$holeNumber")
+        val metaFile = File(context.filesDir, "maps/hole_$holeNumber.json")
+        if (metaFile.exists()) {
+            try {
+                holeMapMeta[holeNumber] = Json.decodeFromString(metaFile.readText())
+                if (BuildConfig.DEBUG) Log.d(TAG, "onMapReceived: meta loaded for hole=$holeNumber")
+            } catch (e: Exception) {
+                Log.e(TAG, "onMapReceived: failed to parse meta for hole=$holeNumber", e)
+            }
+        } else {
+            Log.w(TAG, "onMapReceived: meta file missing for hole=$holeNumber")
+        }
+        mapAvailableHoles.update { it + holeNumber }
+        if (BuildConfig.DEBUG) Log.d(TAG, "onMapReceived: mapAvailableHoles=${mapAvailableHoles.value}")
+    }
+
+    fun loadMapBitmap(holeNumber: Int): android.graphics.Bitmap? {
+        val file = File(context.filesDir, "maps/hole_$holeNumber.jpg")
+        return if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
     }
 
     // ── Distance computation ──

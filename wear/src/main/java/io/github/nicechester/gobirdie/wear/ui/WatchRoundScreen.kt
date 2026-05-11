@@ -1,5 +1,6 @@
 package io.github.nicechester.gobirdie.wear.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -11,9 +12,15 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,7 +114,7 @@ private fun WaitingView(session: WatchRoundSession) {
 
 @Composable
 private fun ActiveRoundPager(session: WatchRoundSession) {
-    var page by remember { mutableIntStateOf(0) }
+    var page by remember { mutableIntStateOf(1) }
 
     Box(
         Modifier
@@ -117,29 +124,75 @@ private fun ActiveRoundPager(session: WatchRoundSession) {
                 detectVerticalDragGestures(
                     onDragStart = { accumulated = 0f },
                     onDragEnd = {
-                        if (accumulated < -60 && page == 0) page = 1
-                        else if (accumulated > 60 && page == 1) page = 0
+                        if (accumulated < -60 && page > 0) page--
+                        else if (accumulated > 60 && page < 2) page++
                     },
                     onVerticalDrag = { _, dragAmount -> accumulated += dragAmount },
                 )
             }
     ) {
-        if (page == 0) {
-            ScoringPage(session)
-        } else {
-            EndRoundPage(session, onBack = { page = 0 })
+        when (page) {
+            0 -> WatchMapPage(session)
+            1 -> ScoringPage(session)
+            2 -> EndRoundPage(session, onBack = { page = 1 })
         }
 
-        // Page indicator dots at bottom — tap to switch
         Row(
             Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 4.dp)
-                .clickable { page = if (page == 0) 1 else 0 },
+                .clickable { page = (page + 1) % 3 },
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             PageDot(active = page == 0)
             PageDot(active = page == 1)
+            PageDot(active = page == 2)
+        }
+    }
+}
+
+@Composable
+private fun WatchMapPage(session: WatchRoundSession) {
+    val holeNum by session.holeNumber.collectAsState()
+    val availableHoles by session.mapAvailableHoles.collectAsState()
+    val isAvailable = holeNum in availableHoles
+
+    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
+        if (!isAvailable) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(indicatorColor = GolfGreen, modifier = Modifier.size(24.dp))
+                Spacer(Modifier.height(8.dp))
+                Text("Syncing map...", fontSize = 13.sp, color = Color.Gray)
+            }
+        } else {
+            val bitmap = remember(holeNum) { session.loadMapBitmap(holeNum) }
+            val meta = session.holeMapMeta[holeNum]
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Hole $holeNum map",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit,
+                )
+            }
+            if (meta != null) {
+                val location by session.currentLocationFlow.collectAsState()
+                if (location != null) {
+                    val config = LocalConfiguration.current
+                    val dotOffset = remember(location, meta) {
+                        val x = ((location!!.longitude - meta.swLon) / (meta.neLon - meta.swLon) * meta.imageWidth).toFloat()
+                        val y = ((1.0 - (location!!.latitude - meta.swLat) / (meta.neLat - meta.swLat)) * meta.imageHeight).toFloat()
+                        val scaleX = config.screenWidthDp.toFloat() / meta.imageWidth
+                        val scaleY = config.screenHeightDp.toFloat() / meta.imageHeight
+                        Offset(x * scaleX, y * scaleY)
+                    }
+                    androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                        drawCircle(Color(0x3F2196F3), radius = 16.dp.toPx(), center = dotOffset)
+                        drawCircle(Color(0xFF2196F3), radius = 8.dp.toPx(), center = dotOffset)
+                        drawCircle(Color.White, radius = 8.dp.toPx(), center = dotOffset, style = Stroke(width = 2.dp.toPx()))
+                    }
+                }
+            }
         }
     }
 }

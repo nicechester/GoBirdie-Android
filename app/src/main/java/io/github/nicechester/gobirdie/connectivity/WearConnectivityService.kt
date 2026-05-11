@@ -3,8 +3,10 @@ package io.github.nicechester.gobirdie.connectivity
 import android.content.Context
 import android.util.Log
 import com.google.android.gms.wearable.*
+import com.google.android.gms.wearable.PutDataMapRequest
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.Hole
+import io.github.nicechester.gobirdie.core.model.HoleMapMeta
 import kotlinx.serialization.json.*
 
 private const val TAG = "WearConnectivity"
@@ -68,6 +70,23 @@ class WearConnectivityService(private val context: Context) {
             put("putts", putts)
         }.toString()
         sendMessage("/phone/action", json.toByteArray())
+    }
+
+    fun sendMapSnapshot(holeNumber: Int, jpeg: ByteArray, meta: HoleMapMeta) {
+        val request = PutDataMapRequest.create("/watch/holeMap/$holeNumber").apply {
+            dataMap.putAsset("image", com.google.android.gms.wearable.Asset.createFromBytes(jpeg))
+            dataMap.putInt("holeNumber", holeNumber)
+            dataMap.putString("version", meta.version)
+            dataMap.putLong("timestamp", System.currentTimeMillis())
+            dataMap.putDouble("swLat", meta.swLat)
+            dataMap.putDouble("swLon", meta.swLon)
+            dataMap.putDouble("neLat", meta.neLat)
+            dataMap.putDouble("neLon", meta.neLon)
+            dataMap.putInt("imageWidth", meta.imageWidth)
+            dataMap.putInt("imageHeight", meta.imageHeight)
+            dataMap.putDouble("bearing", meta.bearing)
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(context).putDataItem(request)
     }
 
     private fun sendMessage(path: String, data: ByteArray) {

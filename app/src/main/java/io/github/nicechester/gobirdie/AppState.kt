@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.nicechester.gobirdie.connectivity.PhoneDataLayerListenerService
 import io.github.nicechester.gobirdie.connectivity.WearConnectivityService
+import io.github.nicechester.gobirdie.connectivity.WearMapSnapshotManager
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.InProgressSnapshot
 import io.github.nicechester.gobirdie.core.data.InProgressStore
@@ -39,6 +40,7 @@ class AppState @Inject constructor(
 
     val locationService = LocationService(context)
     val wearService = WearConnectivityService(context)
+    val snapshotManager = WearMapSnapshotManager(context)
 
     private val _activeSession = MutableStateFlow<RoundSession?>(null)
     val activeSession: StateFlow<RoundSession?> = _activeSession
@@ -83,6 +85,7 @@ class AppState @Inject constructor(
         resetIdleTimer()
         sendHoleDataToWatch()
         observeHoleChanges()
+        triggerMapSnapshots(course)
         return session
     }
 
@@ -143,6 +146,24 @@ class AppState @Inject constructor(
         Log.i(TAG, "Resumed round on hole ${snapshot.currentHoleIndex + 1}")
         sendHoleDataToWatch()
         observeHoleChanges()
+        triggerMapSnapshots(course)
+    }
+
+    private fun triggerMapSnapshots(course: Course) {
+        viewModelScope.launch {
+            val version = computeCourseVersion(course)
+            snapshotManager.generateAndSend(course, wearService, version)
+        }
+    }
+
+    private fun computeCourseVersion(course: Course): String {
+        val input = course.holes.joinToString("|") { h ->
+            "${h.tee?.lat},${h.tee?.lon},${h.greenCenter?.lat},${h.greenCenter?.lon}"
+        }
+        return java.security.MessageDigest.getInstance("SHA-256")
+            .digest(input.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+            .take(16)
     }
 
     fun discardInProgressRound() {

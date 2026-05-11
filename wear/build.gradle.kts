@@ -1,3 +1,10 @@
+import java.util.Properties
+
+val keystoreProps = Properties().also { props ->
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) props.load(f.inputStream())
+}
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -12,16 +19,16 @@ android {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 30
         targetSdk = 35
-        versionCode = 2
+        versionCode = 3
         versionName = "1.3.0"
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file(System.getenv("KEYSTORE_PATH") ?: "release.keystore")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = System.getenv("KEY_ALIAS") ?: ""
-            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            storeFile = rootProject.file(keystoreProps["storeFile"] as? String ?: System.getenv("KEYSTORE_PATH") ?: "release.keystore")
+            storePassword = keystoreProps["storePassword"] as? String ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias = keystoreProps["keyAlias"] as? String ?: System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = keystoreProps["keyPassword"] as? String ?: System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 
@@ -32,19 +39,18 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = if (file(System.getenv("KEYSTORE_PATH") ?: "release.keystore").exists())
-                signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_25
-        targetCompatibility = JavaVersion.VERSION_25
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlin {
         compilerOptions {
-            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_25
+            jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
         }
     }
 

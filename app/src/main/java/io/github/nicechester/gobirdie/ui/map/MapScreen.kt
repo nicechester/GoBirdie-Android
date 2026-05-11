@@ -29,6 +29,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
 import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.*
+import io.github.nicechester.gobirdie.core.model.teeToPinBearing
 import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import io.github.nicechester.gobirdie.ui.round.StartRoundScreen
 import io.github.nicechester.gobirdie.ui.round.StartRoundViewModel
@@ -637,16 +638,6 @@ private fun animateToHole(map: MapLibreMap, hole: Hole?, course: Course) {
             600,
         )
     }
-}
-
-private fun teeToPinBearing(tee: GpsPoint, green: GpsPoint): Double {
-    val dLon = Math.toRadians(green.lon - tee.lon)
-    val lat1 = Math.toRadians(tee.lat)
-    val lat2 = Math.toRadians(green.lat)
-    val y = sin(dLon) * cos(lat2)
-    val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
-    val bearing = Math.toDegrees(atan2(y, x))
-    return (bearing + 360) % 360
 }
 
 // ─── GeoJSON Golf Layers ────────────────────────────────────────────
