@@ -21,7 +21,7 @@ android {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 27
         targetSdk = 35
-        versionCode = 16
+        versionCode = 17
         versionName = "1.3.1"
         testInstrumentationRunner = "io.github.nicechester.gobirdie.HiltTestRunner"
     }
