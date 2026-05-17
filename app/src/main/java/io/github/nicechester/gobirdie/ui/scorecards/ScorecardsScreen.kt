@@ -201,6 +201,10 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
             HorizontalDivider()
             TotalsRow(currentRound, playedHoles, parTotal)
 
+            // Key Insights
+            Spacer(Modifier.height(8.dp))
+            InsightsCard(round = currentRound, courseHoles = course?.holes ?: emptyList())
+
             // Stats
             HorizontalDivider(Modifier.padding(top = 4.dp))
             StatsSection(playedHoles)

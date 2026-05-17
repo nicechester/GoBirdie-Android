@@ -8,7 +8,7 @@ import com.google.android.gms.wearable.Wearable
 import com.google.android.gms.wearable.WearableListenerService
 import io.github.nicechester.gobirdie.wear.BuildConfig
 import io.github.nicechester.gobirdie.core.model.HoleMapMeta
-import kotlinx.serialization.encodeToString
+import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.io.File
@@ -16,6 +16,13 @@ import java.io.File
 private const val TAG = "DataLayerListener"
 
 class DataLayerListenerService : WearableListenerService() {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
+    }
 
     override fun onMessageReceived(event: MessageEvent) {
         if (BuildConfig.DEBUG) Log.d(TAG, "onMessageReceived: path=${event.path} size=${event.data.size}")
@@ -38,14 +45,14 @@ class DataLayerListenerService : WearableListenerService() {
                 }
                 path.startsWith("/watch/holeMap/") -> {
                     val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
-                    saveMapSnapshot(dataMap)
+                    scope.launch { saveMapSnapshot(dataMap) }
                 }
             }
         }
         events.release()
     }
 
-    private fun saveMapSnapshot(dataMap: com.google.android.gms.wearable.DataMap) {
+    private suspend fun saveMapSnapshot(dataMap: com.google.android.gms.wearable.DataMap) {
         val holeNumber = dataMap.getInt("holeNumber")
         if (BuildConfig.DEBUG) Log.d(TAG, "saveMapSnapshot: hole=$holeNumber")
         val asset = dataMap.getAsset("image") ?: run {
@@ -58,7 +65,7 @@ class DataLayerListenerService : WearableListenerService() {
         }
         try {
             val result = com.google.android.gms.tasks.Tasks.await(
-                Wearable.getDataClient(this).getFdForAsset(asset)
+                Wearable.getDataClient(applicationContext).getFdForAsset(asset)
             )
             val jpeg = result.inputStream.readBytes()
             result.release()
