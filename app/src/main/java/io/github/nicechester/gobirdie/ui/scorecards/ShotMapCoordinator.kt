@@ -287,7 +287,7 @@ class ShotMapCoordinator(private val context: Context) {
 
     private fun clubColorInt(club: ClubType): Int = when (club) {
         ClubType.DRIVER -> Color.RED
-        ClubType.WOOD_3, ClubType.WOOD_5 -> Color.rgb(255, 152, 0)
+        ClubType.MINI_DRIVER, ClubType.WOOD_3, ClubType.WOOD_5, ClubType.WOOD_7, ClubType.WOOD_9 -> Color.rgb(255, 152, 0)
         ClubType.HYBRID_3, ClubType.HYBRID_4, ClubType.HYBRID_5 -> Color.rgb(0, 150, 136)
         ClubType.IRON_4, ClubType.IRON_5, ClubType.IRON_6,
         ClubType.IRON_7, ClubType.IRON_8, ClubType.IRON_9 -> Color.rgb(33, 150, 243)

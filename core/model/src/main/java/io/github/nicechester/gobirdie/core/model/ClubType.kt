@@ -7,8 +7,11 @@ import kotlinx.serialization.Serializable
 enum class ClubType(val displayName: String, val shortName: String, val serialName: String) {
     @SerialName("unknown")  UNKNOWN("Unknown", "?", "unknown"),
     @SerialName("driver")   DRIVER("Driver", "D", "driver"),
+    @SerialName("md")       MINI_DRIVER("Mini Driver", "MD", "md"),
     @SerialName("3w")       WOOD_3("3 Wood", "3W", "3w"),
     @SerialName("5w")       WOOD_5("5 Wood", "5W", "5w"),
+    @SerialName("7w")       WOOD_7("7 Wood", "7W", "7w"),
+    @SerialName("9w")       WOOD_9("9 Wood", "9W", "9w"),
     @SerialName("3h")       HYBRID_3("3 Hybrid", "3H", "3h"),
     @SerialName("4h")       HYBRID_4("4 Hybrid", "4H", "4h"),
     @SerialName("5h")       HYBRID_5("5 Hybrid", "5H", "5h"),
