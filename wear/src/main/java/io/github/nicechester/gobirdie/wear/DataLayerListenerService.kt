@@ -43,6 +43,14 @@ class DataLayerListenerService : WearableListenerService() {
                     val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
                     WearSessionHolder.session?.handleMessageFromDataMap(dataMap)
                 }
+                path == "/phone/action" -> {
+                    val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
+                    val map = mutableMapOf<String, Any?>()
+                    for (key in dataMap.keySet()) {
+                        map[key] = dataMap.get(key)
+                    }
+                    WearSessionHolder.session?.handleMessage(map)
+                }
                 path.startsWith("/watch/holeMap/") -> {
                     val dataMap = DataMapItem.fromDataItem(event.dataItem).dataMap
                     scope.launch { saveMapSnapshot(dataMap) }
