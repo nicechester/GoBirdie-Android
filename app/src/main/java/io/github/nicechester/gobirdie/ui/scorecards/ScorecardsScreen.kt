@@ -142,6 +142,12 @@ private fun RoundRow(round: Round, modifier: Modifier = Modifier, onClick: () ->
 @Composable
 private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDismiss: () -> Unit) {
     var currentRound by remember { mutableStateOf(round) }
+    val context = LocalContext.current
+    val sgBaseline = remember {
+        val prefs = context.getSharedPreferences("gobirdie_settings", android.content.Context.MODE_PRIVATE)
+        val name = prefs.getString("sgBaseline", SGBaseline.BOGEY.name) ?: SGBaseline.BOGEY.name
+        SGBaseline.entries.firstOrNull { it.name == name } ?: SGBaseline.BOGEY
+    }
     val playedHoles = currentRound.holes.filter { it.strokes > 0 }
     val parTotal = playedHoles.sumOf { it.par }
     val frontNine = currentRound.holes.take(9).let { if (it.any { h -> h.strokes > 0 }) it else emptyList() }
@@ -203,7 +209,12 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
 
             // Key Insights
             Spacer(Modifier.height(8.dp))
-            InsightsCard(round = currentRound, courseHoles = course?.holes ?: emptyList())
+            InsightsCard(
+                round = currentRound,
+                courseHoles = course?.holes ?: emptyList(),
+                historicalRounds = viewModel.rounds.collectAsState().value,
+                baseline = sgBaseline,
+            )
 
             // Stats
             HorizontalDivider(Modifier.padding(top = 4.dp))

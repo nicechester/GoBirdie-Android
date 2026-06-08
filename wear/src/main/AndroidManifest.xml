@@ -38,6 +38,11 @@
         </activity>
 
         <service
+            android:name=".RoundForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="health" />
+
+        <service
             android:name=".ExerciseService"
             android:exported="false"
             android:foregroundServiceType="health" />

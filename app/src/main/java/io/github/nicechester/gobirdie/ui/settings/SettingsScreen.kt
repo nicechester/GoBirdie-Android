@@ -25,6 +25,7 @@ import io.github.nicechester.gobirdie.core.data.api.GolfCourseApiClient
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.GpsPoint
+import io.github.nicechester.gobirdie.core.model.SGBaseline
 import io.github.nicechester.gobirdie.sync.SyncManager
 import io.github.nicechester.gobirdie.sync.SYNC_PORT
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -89,6 +90,10 @@ private fun SettingsMain(
                 trailing = teeColor,
             ) { showTeePicker = true }
         }
+
+        // Insights
+        item { SectionHeader("Insights") }
+        item { InsightsBaselineRow(prefs) }
 
         // Desktop Sync
         item { SectionHeader("Desktop Sync") }
@@ -219,6 +224,57 @@ private fun teeDisplayColor(name: String): Color = when (name) {
     "Yellow" -> Color.Yellow
     "Red" -> Color.Red
     else -> Color.Gray
+}
+
+@Composable
+private fun InsightsBaselineRow(prefs: android.content.SharedPreferences) {
+    var selected by remember {
+        val name = prefs.getString("sgBaseline", SGBaseline.BOGEY.name) ?: SGBaseline.BOGEY.name
+        mutableStateOf(SGBaseline.entries.firstOrNull { it.name == name } ?: SGBaseline.BOGEY)
+    }
+    var showPicker by remember { mutableStateOf(false) }
+
+    SettingsRow(
+        icon = Icons.Default.Insights,
+        label = "SG Baseline",
+        trailing = selected.displayName,
+    ) { showPicker = true }
+
+    if (showPicker) {
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = { Text("SG Baseline") },
+            text = {
+                Column {
+                    SGBaseline.entries.forEach { baseline ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable {
+                                    selected = baseline
+                                    prefs.edit().putString("sgBaseline", baseline.name).apply()
+                                    showPicker = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(baseline.displayName, style = MaterialTheme.typography.bodyLarge)
+                            Spacer(Modifier.weight(1f))
+                            if (baseline == selected) {
+                                Icon(Icons.Default.Check, null, tint = GolfGreen)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Insights compare your round against this benchmark.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            },
+            confirmButton = {},
+        )
+    }
 }
 
 @Composable

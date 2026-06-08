@@ -21,7 +21,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,6 +44,9 @@ fun WatchRoundScreen(session: WatchRoundSession, isAmbient: Boolean = false) {
     val isRoundEnded by session.isRoundEnded.collectAsState()
     val showClubPicker by session.showClubPicker.collectAsState()
 
+    val density = LocalDensity.current
+    val cappedDensity = remember(density) { Density(density.density, fontScale = density.fontScale.coerceAtMost(1.0f)) }
+    CompositionLocalProvider(LocalDensity provides cappedDensity) {
     MaterialTheme {
         Box(Modifier.fillMaxSize().background(DarkBg)) {
             when {
@@ -56,6 +61,7 @@ fun WatchRoundScreen(session: WatchRoundSession, isAmbient: Boolean = false) {
             }
         }
     }
+    }
 }
 
 // ── Ambient Mode (Always-On Display) ──
@@ -67,7 +73,7 @@ private fun AmbientScoringView(session: WatchRoundSession) {
     val pin by session.pinYards.collectAsState()
     val strokesVal by session.strokes.collectAsState()
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "H$holeNum  P$parVal",
@@ -94,7 +100,7 @@ private fun AmbientScoringView(session: WatchRoundSession) {
 private fun WaitingView(session: WatchRoundSession) {
     val name by session.courseName.collectAsState()
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("⛳", fontSize = 32.sp)
             Spacer(Modifier.height(8.dp))
@@ -232,8 +238,8 @@ private fun ScoringPage(session: WatchRoundSession) {
     Column(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 0.dp)
-            .padding(top = 24.dp)
+            .padding(horizontal = 20.dp, vertical = 0.dp)
+            .padding(top = 28.dp)
             .onRotaryScrollEvent { event ->
                 val delta = if (event.verticalScrollPixels > 0) 1 else -1
                 val target = (rotaryHole + delta).coerceIn(1, totalHolesVal)
@@ -276,15 +282,36 @@ private fun ScoringPage(session: WatchRoundSession) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                 Text("F", fontSize = 11.sp, color = Color.Gray)
-                Text("${front ?: 0}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    "${front ?: 0}",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1.5f)) {
                 Text("PIN", fontSize = 13.sp, color = Color.Gray)
-                Text("${pin ?: 0}", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = GolfGreen)
+                Text(
+                    "${pin ?: 0}",
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = GolfGreen,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
                 Text("B", fontSize = 11.sp, color = Color.Gray)
-                Text("${back ?: 0}", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    "${back ?: 0}",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
 
@@ -308,15 +335,13 @@ private fun ScoringPage(session: WatchRoundSession) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             CompactChip(
                 onClick = { session.markShot() },
-                label = { Text("Shot", fontSize = 12.sp) },
-                icon = { Text("📍", fontSize = 14.sp) },
+                label = { Text("📍 Shot", fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
                 colors = ChipDefaults.chipColors(backgroundColor = GolfGreen),
                 modifier = Modifier.weight(1f),
             )
             CompactChip(
                 onClick = { session.addPutt() },
-                label = { Text("Putt", fontSize = 12.sp) },
-                icon = { Text("+1", fontSize = 12.sp, fontWeight = FontWeight.Bold) },
+                label = { Text("+1 Putt", fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) },
                 colors = ChipDefaults.chipColors(backgroundColor = Color(0xFF333333)),
                 modifier = Modifier.weight(1f),
             )
@@ -333,7 +358,7 @@ private fun EndRoundPage(session: WatchRoundSession, onBack: () -> Unit) {
     val strokesVal by session.strokes.collectAsState()
     val totalDisplay = remember(strokesVal) { session.totalStrokes }
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("$totalDisplay", fontSize = 44.sp, fontWeight = FontWeight.Bold, color = Color.White)
             Text("Hole $holeNum of $totalHolesVal", fontSize = 13.sp, color = Color.Gray)
@@ -368,12 +393,19 @@ private fun RoundEndedView(session: WatchRoundSession) {
         session.resetToWaiting()
     }
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text("⛳", fontSize = 28.sp)
             Spacer(Modifier.height(4.dp))
             Text(name, fontSize = 11.sp, color = Color.Gray, textAlign = TextAlign.Center, maxLines = 2)
-            Text("$totalDisplay", fontSize = 48.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            Text(
+                "$totalDisplay",
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text("Round Saved", fontSize = 13.sp, color = Color.Gray)
             Spacer(Modifier.height(8.dp))
             CompactChip(
