@@ -19,8 +19,8 @@ android {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 30
         targetSdk = 35
-        versionCode = 20
-        versionName = "1.4.2"
+        versionCode = 26
+        versionName = "1.4.5"
     }
 
     signingConfigs {
@@ -83,6 +83,7 @@ dependencies {
 
     // Wear OS
     implementation("androidx.wear:wear:1.3.0")
+    implementation("androidx.wear:wear-ongoing:1.0.0")
 
     // Health Services (ExerciseClient for GPS + heart rate)
     implementation("androidx.health:health-services-client:1.1.0-alpha05")

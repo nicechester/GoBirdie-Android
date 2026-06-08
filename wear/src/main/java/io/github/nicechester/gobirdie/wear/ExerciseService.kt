@@ -3,11 +3,15 @@ package io.github.nicechester.gobirdie.wear
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.wear.ongoing.OngoingActivity
+import androidx.wear.ongoing.Status
 import androidx.health.services.client.ExerciseUpdateCallback
 import androidx.health.services.client.HealthServices
 import androidx.health.services.client.clearUpdateCallback
@@ -125,11 +129,28 @@ class ExerciseService : Service() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun buildNotification(): Notification =
-        Notification.Builder(this, CHANNEL_ID)
+    private fun buildNotification(): Notification {
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val tapPendingIntent = PendingIntent.getActivity(
+            this, 0, launchIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notifBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle("GoBirdie")
             .setContentText("Tracking golf round")
             .setOngoing(true)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setContentIntent(tapPendingIntent)
+
+        OngoingActivity.Builder(applicationContext, NOTIFICATION_ID, notifBuilder)
+            .setAnimatedIcon(android.R.drawable.ic_menu_mylocation)
+            .setStaticIcon(android.R.drawable.ic_menu_mylocation)
+            .setTouchIntent(tapPendingIntent)
+            .setStatus(Status.forPart(Status.TextPart("Golf Round")))
             .build()
+            .apply(applicationContext)
+
+        return notifBuilder.build()
+    }
 }

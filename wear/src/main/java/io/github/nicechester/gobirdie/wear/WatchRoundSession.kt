@@ -307,12 +307,15 @@ class WatchRoundSession(private val context: Context) {
     // ── Location ──
 
     @SuppressLint("MissingPermission")
-    private fun startLocation() {
+    fun startLocation() {
         if (isActive) return
         isActive = true
         val client = LocationServices.getFusedLocationProviderClient(context)
         fusedClient = client
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000).build()
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000)
+            .setGranularity(Granularity.GRANULARITY_FINE)
+            .setMinUpdateDistanceMeters(1f)
+            .build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 if (hasExerciseLocation) return
@@ -326,7 +329,7 @@ class WatchRoundSession(private val context: Context) {
         client.requestLocationUpdates(request, callback, Looper.getMainLooper())
     }
 
-    private fun stopLocation() {
+    fun stopLocation() {
         locationCallback?.let { fusedClient?.removeLocationUpdates(it) }
         locationCallback = null
         fusedClient = null

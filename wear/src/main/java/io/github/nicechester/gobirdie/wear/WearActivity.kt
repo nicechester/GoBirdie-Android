@@ -37,7 +37,9 @@ class WearActivity : ComponentActivity() {
         session = WatchRoundSession(applicationContext)
         WearSessionHolder.session = session
 
+        RoundForegroundService.start(this)
         requestPermissionsIfNeeded()
+        session.startLocation()
 
         setContent {
             WatchRoundScreen(session, isAmbient.value)
@@ -45,6 +47,8 @@ class WearActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        session.stopLocation()
+        RoundForegroundService.stop(this)
         super.onDestroy()
         WearSessionHolder.session = null
     }
