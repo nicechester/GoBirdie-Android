@@ -483,6 +483,8 @@ private fun CourseMapView(
 
     val hole = course.holes.getOrNull(holeIndex)
 
+    coordinator.onTapMap = { gps -> tapPoint = gps }
+
     // Hole change: update golf layers, camera, shots
     LaunchedEffect(holeIndex, styleLoaded) {
         val map = mapLibreMap ?: return@LaunchedEffect
@@ -529,10 +531,6 @@ private fun CourseMapView(
                     }
                     mlMap.uiSettings.isRotateGesturesEnabled = false
                     mlMap.addOnCameraIdleListener { cameraVersion++ }
-                    mlMap.addOnMapClickListener { latLng ->
-                        tapPoint = GpsPoint(latLng.latitude, latLng.longitude)
-                        true
-                    }
                 }
                 mv
             },
@@ -757,9 +755,17 @@ private fun updatePlayerAndTapLayers(map: MapLibreMap, player: GpsPoint?, tap: G
     fun addDistLabel(srcId: String, layerId: String, pt: GpsPoint, yards: Int) {
         val imgKey = "map-dist-$yards"
         if (style.getImage(imgKey) == null) style.addImage(imgKey, makeLabelBitmap("${yards}y", AColor.argb(180, 0, 0, 0)))
-        style.addSource(GeoJsonSource(srcId, pointFeature(pt)))
+        val feat = JSONObject().apply {
+            put("type", "Feature")
+            put("geometry", JSONObject().apply {
+                put("type", "Point")
+                put("coordinates", JSONArray().put(pt.lon).put(pt.lat))
+            })
+            put("properties", JSONObject().apply { put("img", imgKey) })
+        }.toString()
+        style.addSource(GeoJsonSource(srcId, feat))
         style.addLayer(SymbolLayer(layerId, srcId).apply {
-            setProperties(iconImage(literal(imgKey)), iconAllowOverlap(literal(true)))
+            setProperties(iconImage(get("img")), iconAllowOverlap(true))
         })
     }
 
@@ -769,7 +775,7 @@ private fun updatePlayerAndTapLayers(map: MapLibreMap, player: GpsPoint?, tap: G
         if (style.getImage(imgKey) == null) style.addImage(imgKey, makePlayerDotBitmap())
         style.addSource(GeoJsonSource("player-src", pointFeature(player)))
         style.addLayer(SymbolLayer("player-dot", "player-src").apply {
-            setProperties(iconImage(literal(imgKey)), iconAllowOverlap(literal(true)))
+            setProperties(iconImage(literal(imgKey)), iconAllowOverlap(true))
         })
     }
 
@@ -779,7 +785,7 @@ private fun updatePlayerAndTapLayers(map: MapLibreMap, player: GpsPoint?, tap: G
         if (style.getImage(tapImgKey) == null) style.addImage(tapImgKey, makeTapDotBitmap())
         style.addSource(GeoJsonSource("tap-src", pointFeature(tap)))
         style.addLayer(SymbolLayer("tap-dot", "tap-src").apply {
-            setProperties(iconImage(literal(tapImgKey)), iconAllowOverlap(literal(true)))
+            setProperties(iconImage(literal(tapImgKey)), iconAllowOverlap(true))
         })
         // Tap → player line
         if (player != null) {
@@ -833,14 +839,15 @@ private fun makeTapDotBitmap(): Bitmap {
 }
 
 private fun makeLabelBitmap(text: String, bgColor: Int): Bitmap {
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AColor.WHITE; textSize = 36f; isFakeBoldText = true }
-    val pad = 12f
+    val d = android.content.res.Resources.getSystem().displayMetrics.density
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AColor.WHITE; textSize = 11f * d; isFakeBoldText = true }
+    val pad = 8f * d
     val w = (paint.measureText(text) + pad * 2).toInt()
-    val h = 48
+    val h = (20f * d).toInt()
     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     canvas.drawRoundRect(0f, 0f, w.toFloat(), h.toFloat(), h / 2f, h / 2f,
         Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bgColor })
-    canvas.drawText(text, pad, h / 2f + 12f, paint)
+    canvas.drawText(text, pad, h / 2f + 4f * d, paint)
     return bmp
 }
