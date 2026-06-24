@@ -19,8 +19,8 @@ android {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 30
         targetSdk = 35
-        versionCode = 26
-        versionName = "1.4.5"
+        versionCode = 27
+        versionName = "1.4.6"
     }
 
     signingConfigs {
