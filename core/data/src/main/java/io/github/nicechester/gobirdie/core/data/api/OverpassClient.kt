@@ -79,11 +79,23 @@ class OverpassClient {
         val geoData = post(geoQuery)
         val geoResp = json.decodeFromString(OverpassResponse.serializer(), geoData)
 
+        // Filter hole ways to only those whose tee falls inside the course boundary polygon.
+        val boundaryPolygon = element.geometry ?: emptyList()
+        val filteredElements = if (boundaryPolygon.size >= 3) {
+            geoResp.elements.filter { el ->
+                if (el.tags?.get("golf") != "hole") return@filter true
+                val tee = el.geometry?.firstOrNull() ?: return@filter true
+                pointInPolygon(tee, boundaryPolygon)
+            }
+        } else {
+            geoResp.elements
+        }
+
         val courseLoc = GpsPoint((minLat + maxLat) / 2, (minLon + maxLon) / 2)
         val anchor = playerLocation ?: courseLoc
         val now = Instant.now().toString()
 
-        val holeLines = geoResp.elements.filter { it.tags?.get("golf") == "hole" }
+        val holeLines = filteredElements.filter { it.tags?.get("golf") == "hole" }
         val refCounts = holeLines.mapNotNull { it.tags?.get("ref")?.toIntOrNull() }
             .groupBy { it }.mapValues { it.value.size }
         val hasDuplicates = refCounts.values.any { it > 1 }
@@ -91,7 +103,7 @@ class OverpassClient {
         if (hasDuplicates) {
             val groups = splitByWayIdGap(holeLines, refCounts.values.maxOrNull() ?: 2)
             return groups.mapIndexed { idx, groupIds ->
-                val groupElements = geoResp.elements.filter { el ->
+                val groupElements = filteredElements.filter { el ->
                     if (el.tags?.get("golf") == "hole") groupIds.contains(el.id) else true
                 }
                 val holes = buildHoles(groupElements, anchor)
@@ -107,7 +119,7 @@ class OverpassClient {
             }
         }
 
-        val holes = buildHoles(geoResp.elements, anchor)
+        val holes = buildHoles(filteredElements, anchor)
         return listOf(
             Course(
                 id = "osm-$osmId",
@@ -148,6 +160,7 @@ class OverpassClient {
 
             val nearestGreen = greens.mapNotNull { it.geometry }
                 .filter { it.size >= 3 }
+                .filter { centroid(it).distanceMeters(greenCenter) < 50.0 }
                 .minByOrNull { centroid(it).distanceMeters(greenCenter) }
 
             val greenFront: GpsPoint?
@@ -193,6 +206,21 @@ class OverpassClient {
         return groups
     }
 
+    private fun pointInPolygon(point: GpsPoint, polygon: List<GpsPoint>): Boolean {
+        var inside = false
+        var j = polygon.size - 1
+        for (i in polygon.indices) {
+            val xi = polygon[i].lon; val yi = polygon[i].lat
+            val xj = polygon[j].lon; val yj = polygon[j].lat
+            if ((yi > point.lat) != (yj > point.lat) &&
+                point.lon < (xj - xi) * (point.lat - yi) / (yj - yi) + xi) {
+                inside = !inside
+            }
+            j = i
+        }
+        return inside
+    }
+
     private fun centroid(points: List<GpsPoint>) =
         GpsPoint(points.map { it.lat }.average(), points.map { it.lon }.average())
 
@@ -210,7 +238,7 @@ class OverpassClient {
         return client.newCall(request).execute().use { resp ->
             when (resp.code) {
                 200 -> resp.body?.string() ?: throw Exception("Empty body")
-                429, 502, 503, 504 -> {
+                406, 429, 502, 503, 504 -> {
                     if (retries <= 0) throw Exception("Overpass HTTP ${resp.code} after retries")
                     val backoff = 3000L * (1L shl (3 - retries)) // 3s, 6s, 12s
                     Thread.sleep(backoff)
