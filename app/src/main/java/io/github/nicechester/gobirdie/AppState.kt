@@ -89,6 +89,15 @@ class AppState @Inject constructor(
         return session
     }
 
+    fun syncWear() {
+        val session = _activeSession.value ?: return
+        val course = _activeCourse.value ?: return
+        val version = computeCourseVersion(course)
+        wearService.sendRoundStartContext(version, course.id)
+        sendHoleDataToWatch()
+        triggerMapSnapshots(course)
+    }
+
     fun endActiveRound() {
         val session = _activeSession.value ?: return
         session.endRound()

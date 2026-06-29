@@ -45,6 +45,7 @@ fun ActiveRoundScreen(
     playerLocation: GpsPoint?,
     onEndRound: () -> Unit,
     onCancelRound: () -> Unit,
+    onSyncWatch: () -> Unit = {},
     onUserInteraction: () -> Unit = {},
 ) {
     val round by session.round.collectAsState()
@@ -92,6 +93,11 @@ fun ActiveRoundScreen(
                     Icon(Icons.Default.MoreVert, "Menu")
                 }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Sync Watch") },
+                        onClick = { showMenu = false; onSyncWatch() },
+                        leadingIcon = { Icon(Icons.Default.Watch, null) },
+                    )
                     DropdownMenuItem(
                         text = { Text("End Round") },
                         onClick = { showMenu = false; showEndConfirm = true },

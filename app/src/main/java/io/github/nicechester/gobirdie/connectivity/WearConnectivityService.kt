@@ -48,6 +48,17 @@ class WearConnectivityService(private val context: Context) {
         Wearable.getDataClient(context).putDataItem(request)
     }
 
+    /** Notify watch of round start with course version hash (mirrors iOS sendRoundStartContext). */
+    fun sendRoundStartContext(versionHash: String, courseId: String) {
+        val request = PutDataMapRequest.create("/phone/action").apply {
+            dataMap.putString("action", "roundStart")
+            dataMap.putString("versionHash", versionHash)
+            dataMap.putString("courseId", courseId)
+            dataMap.putLong("timestamp", System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(context).putDataItem(request)
+    }
+
     /** Notify watch that the round ended from phone side. */
     fun sendRoundEnded() {
         val request = PutDataMapRequest.create("/phone/action").apply {

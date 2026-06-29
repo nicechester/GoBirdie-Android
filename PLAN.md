@@ -345,6 +345,9 @@ dependencies {
 - [x] **Shared club picker** — Extracted `ClubPickerSheet` to `ui/components/` so `ActiveRoundScreen` and `ScorecardsScreen` share the same scroll-snap implementation; bumped font size (`bodyLarge` / `titleLarge` for selected)
 - [x] **Build modernization** — Gradle 9.4.1, AGP 9.2.0, Kotlin 2.3.21, KSP 2.3.7, Hilt 2.59.2, JVM 21; `org.gradle.java.home` moved to `local.properties`
 
+#### 2026-06-25
+- [x] **Sync Watch** — Mirror iOS `syncWatch()` introduced in commit `31cd8d3`. Add "Sync Watch" `DropdownMenuItem` to the round menu in `ActiveRoundScreen` (always visible, no reachability gate). Add `sendRoundStartContext(versionHash, courseId)` to `WearConnectivityService` (sends `/phone/action` data item with `action=roundStart`). Add `syncWear()` to `AppState` that calls `sendRoundStartContext`, `sendHoleDataToWatch()`, and `triggerMapSnapshots(course)`. Pass an `onSyncWatch: () -> Unit` lambda from `RoundScreen` down to `ActiveRoundScreen` to keep coupling loose.
+
 ## Data Compatibility
 
 The JSON format is identical between iOS and Android. A round saved on iOS can be loaded on Android and vice versa. This enables:
