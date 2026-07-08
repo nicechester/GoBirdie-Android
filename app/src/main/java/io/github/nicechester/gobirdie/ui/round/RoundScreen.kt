@@ -90,6 +90,7 @@ fun RoundScreen(appState: AppState) {
             playerLocation = playerLocation,
             onEndRound = { appState.endActiveRound() },
             onCancelRound = { appState.cancelActiveRound() },
+            onSyncWatch = { appState.syncWear() },
             onUserInteraction = { appState.resetIdleTimer() },
         )
     } else if (showStartRound) {

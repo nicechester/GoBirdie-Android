@@ -16,12 +16,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import io.github.nicechester.gobirdie.ui.tournaments.TournamentsListScreen
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +39,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.core.model.*
 import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
+import io.github.nicechester.gobirdie.ui.tournaments.TournamentDetailScreen
+import io.github.nicechester.gobirdie.ui.tournaments.TournamentsViewModel
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -53,6 +58,7 @@ private val GolfGreen = Color(0xFF2E7D32)
 fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
     val rounds by viewModel.rounds.collectAsState()
     var selectedRound by remember { mutableStateOf<Round?>(null) }
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -62,51 +68,68 @@ fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
             viewModel = viewModel,
             onDismiss = { selectedRound = null },
         )
-    } else {
-        Scaffold(
-            topBar = { TopAppBar(title = { Text("Scorecards") }) }
-        ) { padding ->
-            if (rounds.isEmpty()) {
-                // Empty state
-                Column(
-                    Modifier.fillMaxSize().padding(padding),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text("📋", fontSize = 48.sp)
-                    Spacer(Modifier.height(12.dp))
-                    Text("No Scorecards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(4.dp))
-                    Text("Completed rounds will appear here", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            } else {
-                LazyColumn(Modifier.padding(padding)) {
-                    items(rounds, key = { it.id }) { round ->
-                        val index = rounds.indexOf(round)
-                        val dismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = {
-                                if (it == SwipeToDismissBoxValue.EndToStart) {
-                                    viewModel.delete(round.id)
-                                    true
-                                } else false
-                            }
-                        )
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            backgroundContent = {
-                                Box(
-                                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.error).padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd,
-                                ) {
-                                    Icon(Icons.Default.Delete, "Delete", tint = Color.White)
-                                }
-                            },
-                            enableDismissFromStartToEnd = false,
-                        ) {
-                            RoundRow(round, Modifier.semantics { testTag = "scorecardItem_$index" }) { selectedRound = round }
+        return
+    }
+
+    val tabRow: @Composable () -> Unit = {
+        TabRow(selectedTabIndex = selectedTab) {
+            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Rounds") })
+            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Tournaments") })
+        }
+    }
+
+    if (selectedTab == 1) {
+        TournamentsListScreen(tabRow = tabRow)
+        return
+    }
+
+    Scaffold(
+        topBar = {
+            Column {
+                TopAppBar(title = { Text("Scorecards") })
+                tabRow()
+            }
+        }
+    ) { padding ->
+        if (rounds.isEmpty()) {
+            Column(
+                Modifier.fillMaxSize().padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text("📋", fontSize = 48.sp)
+                Spacer(Modifier.height(12.dp))
+                Text("No Scorecards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text("Completed rounds will appear here", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(Modifier.padding(padding)) {
+                items(rounds, key = { it.id }) { round ->
+                    val index = rounds.indexOf(round)
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = {
+                            if (it == SwipeToDismissBoxValue.EndToStart) {
+                                viewModel.delete(round.id)
+                                true
+                            } else false
                         }
-                        HorizontalDivider()
+                    )
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        backgroundContent = {
+                            Box(
+                                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.error).padding(horizontal = 20.dp),
+                                contentAlignment = Alignment.CenterEnd,
+                            ) {
+                                Icon(Icons.Default.Delete, "Delete", tint = Color.White)
+                            }
+                        },
+                        enableDismissFromStartToEnd = false,
+                    ) {
+                        RoundRow(round, Modifier.semantics { testTag = "scorecardItem_$index" }) { selectedRound = round }
                     }
+                    HorizontalDivider()
                 }
             }
         }
@@ -154,7 +177,24 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
     val backNine = currentRound.holes.drop(9).take(9).let { if (it.any { h -> h.strokes > 0 }) it else emptyList() }
     val holesWithShots = currentRound.holes.filter { it.shots.isNotEmpty() }
     var showShotMap by remember { mutableStateOf(false) }
+    var showQrShare by remember { mutableStateOf(false) }
+    var tournamentToOpen by remember { mutableStateOf<Tournament?>(null) }
+    val tournamentsViewModel: TournamentsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val course = remember(currentRound.courseId) { viewModel.loadCourse(currentRound.courseId) }
+
+    if (showQrShare) {
+        QrShareScreen(round = currentRound, onDismiss = { showQrShare = false })
+        return
+    }
+
+    tournamentToOpen?.let { t ->
+        TournamentDetailScreen(
+            tournament = t,
+            viewModel = tournamentsViewModel,
+            onDismiss = { tournamentToOpen = null },
+        )
+        return
+    }
 
     if (showShotMap) {
         if (course != null) {
@@ -180,6 +220,14 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
                 title = { Text(currentRound.courseName) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                },
+                actions = {
+                    IconButton(onClick = { tournamentToOpen = viewModel.createTournamentFromRound(currentRound) }) {
+                        Icon(Icons.Default.EmojiEvents, "Start Tournament")
+                    }
+                    IconButton(onClick = { showQrShare = true }) {
+                        Icon(Icons.Default.QrCode, "Share Score")
+                    }
                 },
             )
         }

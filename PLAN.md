@@ -345,6 +345,9 @@ dependencies {
 - [x] **Shared club picker** — Extracted `ClubPickerSheet` to `ui/components/` so `ActiveRoundScreen` and `ScorecardsScreen` share the same scroll-snap implementation; bumped font size (`bodyLarge` / `titleLarge` for selected)
 - [x] **Build modernization** — Gradle 9.4.1, AGP 9.2.0, Kotlin 2.3.21, KSP 2.3.7, Hilt 2.59.2, JVM 21; `org.gradle.java.home` moved to `local.properties`
 
+#### 2026-06-25
+- [x] **Sync Watch** — Mirror iOS `syncWatch()` introduced in commit `31cd8d3`. Add "Sync Watch" `DropdownMenuItem` to the round menu in `ActiveRoundScreen` (always visible, no reachability gate). Add `sendRoundStartContext(versionHash, courseId)` to `WearConnectivityService` (sends `/phone/action` data item with `action=roundStart`). Add `syncWear()` to `AppState` that calls `sendRoundStartContext`, `sendHoleDataToWatch()`, and `triggerMapSnapshots(course)`. Pass an `onSyncWatch: () -> Unit` lambda from `RoundScreen` down to `ActiveRoundScreen` to keep coupling loose.
+
 ## Data Compatibility
 
 The JSON format is identical between iOS and Android. A round saved on iOS can be loaded on Android and vice versa. This enables:
@@ -358,3 +361,144 @@ The JSON format is identical between iOS and Android. A round saved on iOS can b
 2. ~~**Desktop sync protocol** — MultipeerConnectivity is Apple-only.~~ → HTTP server + mDNS on Android
 3. **Play Store vs F-Droid** — Distribute on both?
 4. **Garmin Connect integration** — Import rounds from Garmin watches on Android?
+
+---
+
+## Tournament Scorecards
+
+### Overview
+
+A tournament view that aggregates multiple players' scorecards into a single leaderboard — like a printed tournament sheet. Players can collect each other's rounds via BLE or local WiFi, enter scores manually, and edit any entry. The view mirrors a standard golf tournament scorecard grid: players as rows, holes as columns, with running totals.
+
+### Reference UI
+
+Standard tournament scorecard grid (portrait, scrollable horizontally):
+- Header row: player name | H1–H9 | Out | H10–H18 | In | Total | +/−
+- One row per player, sorted by total score (best first)
+- Color-coded score cells: eagle=yellow, birdie=green, par=white, bogey=orange, double+=red
+- "You" row (own round) pinned or highlighted
+- Tap a player row to expand full hole-by-hole detail
+- Tap a cell to edit that player's score for that hole (if editable)
+
+### Data Model
+
+```kotlin
+// core/model/TournamentPlayer.kt
+@Serializable
+data class TournamentPlayer(
+    val id: String,                  // UUID
+    val name: String,                // entered by host on receiver side
+    val holes: List<HoleScore>,      // reuse existing HoleScore
+    val source: PlayerSource,        // SELF | RECEIVED | MANUAL
+)
+
+enum class PlayerSource { SELF, RECEIVED, MANUAL }
+
+// core/model/Tournament.kt
+@Serializable
+data class Tournament(
+    val id: String,
+    val title: String? = null,       // optional label e.g. "Saturday Scramble"
+    val courseId: String,
+    val courseName: String,
+    val date: String,                // ISO-8601 date (yyyy-MM-dd)
+    val players: List<TournamentPlayer>,
+    val createdAt: String,
+)
+```
+
+`TournamentStore` mirrors `RoundStore` — JSON files under `GoBirdie/tournaments/<id>.json`.
+
+### Screens
+
+| Screen | Description |
+|--------|-------------|
+| `TournamentsListScreen` | List of saved tournaments sorted by date; swipe-to-delete; FAB to create new |
+| `TournamentDetailScreen` | Horizontally scrollable scorecard grid — players × holes; color-coded cells; sorted leaderboard |
+| `CreateTournamentScreen` | Pick course (from saved courses), date picker, optional title; auto-adds own latest round as SELF |
+| `EditPlayerScoreScreen` | Hole-by-hole score entry/edit for one player; +/− stepper per hole; par shown as reference |
+| `CollectScoresScreen` | Camera QR scanner; after scan prompts host to enter player name; adds to tournament |
+
+### Score Collection
+
+mDNS/Bonjour only works on a shared LAN. On a golf course players are typically on cellular or have no shared network, so LAN-based discovery is not reliable. The following transports are viable:
+
+| Transport | Infrastructure needed | Cross-platform | Friction |
+|-----------|----------------------|----------------|----------|
+| QR code | None | ✅ iOS + Android | Low — display/scan |
+| WiFi hotspot + mDNS | One player creates hotspot, others join | ✅ | Medium — manual join |
+| BLE | None | ✅ iOS + Android | Low — automatic scan |
+| Nearby Connections API | None | ❌ Android-only | Low |
+
+#### Option A — QR Code (P0, cross-platform)
+
+Simplest zero-infrastructure approach. Works iOS ↔ Android with no extra setup.
+
+- Sender taps "Share Score" → app generates a QR code containing the round's hole-by-hole scores as compact JSON
+- Tournament host taps "Scan Score" → opens camera, scans QR → prompted to enter player name → round decoded and added as `TournamentPlayer(source = RECEIVED)`
+- QR payload: course + date + 18 hole scores (strokes + putts per hole) — fits comfortably in a QR code
+- iOS sender: add "Share Score" QR screen to GoBirdie iOS (small addition)
+- Android sender: same screen in GoBirdie Android
+
+#### Option B — WiFi Hotspot + mDNS (P1)
+
+Reuses existing HTTP server infrastructure. One player creates a phone hotspot, others join, then mDNS discovery works within that subnet.
+
+- Sender enables "Share Score" (same toggle as Desktop Sync) — starts HTTP server + mDNS
+- Host opens `CollectScoresScreen`, scans for `_gobirdie._tcp` on the hotspot subnet
+- Pulls round via `GET /api/rounds` + `GET /api/rounds/:id`
+- Works iOS ↔ Android unchanged — both already speak the same protocol on port 7743
+- Downside: requires all players to manually join the hotspot
+
+#### Option C — BLE (P2, cross-platform)
+
+No infrastructure needed, automatic discovery, works iOS ↔ Android.
+
+- Sender advertises as BLE peripheral with a custom GoBirdie service UUID
+- Host scans for BLE peripherals with that UUID, connects, reads score characteristic
+- Score payload same compact JSON as QR option
+- Requires CoreBluetooth additions on iOS and BluetoothLeScanner/Advertiser on Android
+- Most seamless UX but highest implementation cost
+
+#### Option D — Manual Entry (P0)
+
+- "Add Player" button on `CreateTournamentScreen` / `TournamentDetailScreen`
+- Enter player name, then step through holes 1–18 with a stroke stepper
+- Saves as `TournamentPlayer(source = MANUAL)`
+- Own round (if active or recently completed) auto-added as `source = SELF`
+
+### Editing
+
+- Long-press any player row in `TournamentDetailScreen` → edit menu (Edit Scores / Rename / Remove)
+- `EditPlayerScoreScreen` shows all 18 holes with +/− steppers; par shown as reference
+- Changes saved immediately to `TournamentStore`
+
+### Navigation
+
+Add **Tournaments** as a 5th bottom nav tab (icon: `Icons.Default.EmojiEvents`) between Scorecards and Map, or nest under Scorecards tab as a sub-screen — decide based on screen real estate.
+
+### Milestones
+
+#### M-T1 — Core (P0)
+- [x] `Tournament` + `TournamentPlayer` + `PlayerSource` models with `kotlinx.serialization`
+- [x] `TournamentStore` (JSON file I/O, mirrors `RoundStore`)
+- [x] `TournamentsListScreen` — list, swipe-to-delete, FAB to create
+- [x] `CreateTournamentScreen` — course picker, date picker, optional title; auto-adds own latest round as SELF
+- [x] Manual player entry + `EditPlayerScoreScreen` (hole +/− steppers, par reference)
+- [x] `TournamentDetailScreen` — horizontally scrollable grid (players × holes), color-coded cells, sorted by total, +/− column
+- [x] Long-press player row → edit menu (Edit Scores / Rename / Remove)
+
+#### M-T2 — QR Collection (P1)
+- [x] `QrShareScreen` — full-screen QR on sender side (ZXing, `com.google.zxing:core:3.5.3`); QR icon in scorecard detail top bar
+- [x] QR payload schema: `{c, d, h}` — course name, date, per-hole `[strokes, putts]`; player name entered by host after scan
+- [x] `CollectScoresScreen` — camera QR scanner (`androidx.camera` + ZXing); after decode prompt host to enter player name; add as `TournamentPlayer(source = RECEIVED)`
+- [ ] iOS: add matching "Share Score" QR screen to GoBirdie iOS
+- [ ] Conflict handling: player already exists → prompt replace or keep both
+
+#### M-T3 — Polish (P2)
+- [ ] WiFi hotspot fallback — NSD browser for `_gobirdie._tcp`; pull via existing HTTP endpoints (works iOS ↔ Android when on same hotspot)
+- [ ] BLE collection — advertise/scan custom GoBirdie service UUID; read score characteristic
+- [ ] Export tournament as image (Canvas → JPEG share sheet)
+- [ ] Handicap-adjusted net score column (optional toggle)
+- [ ] Tap player row to expand full shot map (reuse `ShotMapView`)
+
