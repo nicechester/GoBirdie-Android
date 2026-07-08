@@ -9,6 +9,7 @@ import dagger.hilt.components.SingletonComponent
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.InProgressStore
 import io.github.nicechester.gobirdie.core.data.RoundStore
+import io.github.nicechester.gobirdie.core.data.TournamentStore
 import io.github.nicechester.gobirdie.sync.SyncManager
 import javax.inject.Singleton
 
@@ -27,6 +28,10 @@ object DataModule {
     @Provides
     @Singleton
     fun provideInProgressStore(@ApplicationContext ctx: Context) = InProgressStore(ctx)
+
+    @Provides
+    @Singleton
+    fun provideTournamentStore(@ApplicationContext ctx: Context) = TournamentStore(ctx)
 
     @Provides
     @Singleton

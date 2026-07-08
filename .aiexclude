@@ -1,0 +1,28 @@
+# Build and IDE files
+.idea/
+.vscode/
+build/
+.gradle/
+bin/
+out/
+
+# Python and Virtual Environments
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Aider cache/history
+.aider*
+
+# Large assets and binaries
+data/
+models/
+*.zip
+*.mp4

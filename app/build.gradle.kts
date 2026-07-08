@@ -21,8 +21,8 @@ android {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 27
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.4.8"
+        versionCode = 31
+        versionName = "1.4.9"
         testInstrumentationRunner = "io.github.nicechester.gobirdie.HiltTestRunner"
     }
 
@@ -109,6 +109,12 @@ dependencies {
 
     // Wearable Data Layer (phone side)
     implementation("com.google.android.gms:play-services-wearable:18.2.0")
+
+    // QR code generation + scanning
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.camera:camera-camera2:1.4.1")
+    implementation("androidx.camera:camera-lifecycle:1.4.1")
+    implementation("androidx.camera:camera-view:1.4.1")
 
     // Test
     val testComposeBom = platform("androidx.compose:compose-bom:2024.12.01")
