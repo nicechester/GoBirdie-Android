@@ -1,6 +1,8 @@
 package io.github.nicechester.gobirdie.ui.tournaments
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,6 +31,8 @@ fun TournamentsListScreen(
     val tournaments by viewModel.tournaments.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var renamingTournament by remember { mutableStateOf<Tournament?>(null) }
+    var renameText by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -45,6 +49,19 @@ fun TournamentsListScreen(
             )
             return
         }
+    }
+
+    // ── Rename dialog ─────────────────────────────────────────────────
+    renamingTournament?.let { t ->
+        RenameTournamentDialog(
+            current = t.title ?: t.courseName,
+            onConfirm = { newName ->
+                viewModel.save(t.copy(title = newName))
+                viewModel.load()
+                renamingTournament = null
+            },
+            onDismiss = { renamingTournament = null },
+        )
     }
 
     if (showCreate) {
@@ -106,7 +123,11 @@ fun TournamentsListScreen(
                         },
                         enableDismissFromStartToEnd = false,
                     ) {
-                        TournamentRow(tournament) { selectedId = tournament.id }
+                        TournamentRow(
+                            tournament = tournament,
+                            onClick = { selectedId = tournament.id },
+                            onLongClick = { renamingTournament = tournament; renameText = tournament.title ?: tournament.courseName },
+                        )
                     }
                     HorizontalDivider()
                 }
@@ -115,9 +136,10 @@ fun TournamentsListScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TournamentRow(tournament: Tournament, onClick: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+private fun TournamentRow(tournament: Tournament, onClick: () -> Unit, onLongClick: () -> Unit) {
+    Surface(Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
         Row(
             Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -138,4 +160,27 @@ private fun TournamentRow(tournament: Tournament, onClick: () -> Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun RenameTournamentDialog(current: String, onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename Tournament") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Name") },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { if (name.isNotBlank()) onConfirm(name.trim()) }, enabled = name.isNotBlank()) {
+                Text("Save", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
