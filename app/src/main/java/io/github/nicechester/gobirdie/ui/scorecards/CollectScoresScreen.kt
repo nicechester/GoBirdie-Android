@@ -14,8 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +37,7 @@ import java.util.concurrent.Executors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectScoresScreen(
+    playerName: String = "",
     onScanned: (payload: QrRoundPayload, playerName: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -57,16 +57,23 @@ fun CollectScoresScreen(
         if (!hasCamera) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    // Name-entry dialog shown after a successful scan
+    // Name-entry dialog shown after a successful scan (only when no name was pre-supplied)
     scannedPayload?.let { payload ->
-        PlayerNameDialog(
-            payload = payload,
-            onConfirm = { name ->
-                onScanned(payload, name)
+        if (playerName.isNotBlank()) {
+            LaunchedEffect(payload) {
+                onScanned(payload, playerName)
                 onDismiss()
-            },
-            onDismiss = { scannedPayload = null }, // allow re-scan
-        )
+            }
+        } else {
+            PlayerNameDialog(
+                payload = payload,
+                onConfirm = { name ->
+                    onScanned(payload, name)
+                    onDismiss()
+                },
+                onDismiss = { scannedPayload = null },
+            )
+        }
     }
 
     Scaffold(

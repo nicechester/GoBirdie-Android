@@ -2,16 +2,16 @@ package io.github.nicechester.gobirdie.ui.tournaments
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,9 +32,8 @@ import io.github.nicechester.gobirdie.ui.scorecards.QrRoundPayload
 import java.util.UUID
 
 private val GolfGreen = Color(0xFF2E7D32)
-private val CellW: Dp = 36.dp
-private val NameW: Dp = 100.dp
-private val TotalW: Dp = 48.dp
+private val CellW: Dp = 60.dp
+private val LabelW: Dp = 44.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,95 +43,74 @@ fun TournamentDetailScreen(
     onDismiss: () -> Unit,
 ) {
     var current by remember { mutableStateOf(tournament) }
-    val sorted = remember(current.players) {
-        current.players.sortedWith(compareBy({ it.scoreVsPar }, { it.totalStrokes }))
-    }
 
-    // Navigation state
-    var editingPlayer by remember { mutableStateOf<TournamentPlayer?>(null) }
-    var showAddManual by remember { mutableStateOf(false) }
-    var showQrScan by remember { mutableStateOf(false) }
+    var showAddPlayer by remember { mutableStateOf(false) }
     var longPressPlayer by remember { mutableStateOf<TournamentPlayer?>(null) }
-    var showRenameDialog by remember { mutableStateOf(false) }
+    var editingCell by remember { mutableStateOf<Pair<String, Int>?>(null) }
 
     fun save(t: Tournament) {
         viewModel.save(t)
         current = t
     }
 
-    // ── QR scan ──────────────────────────────────────────────────────
-    if (showQrScan) {
-        CollectScoresScreen(
+    // ── Add player sheet ──────────────────────────────────────────────
+    if (showAddPlayer) {
+        AddPlayerSheet(
+            onAdd = { name ->
+                val blank = TournamentPlayer(name = name, holes = emptyList(), source = PlayerSource.MANUAL.name)
+                save(current.copy(players = current.players + blank))
+                showAddPlayer = false
+            },
             onScanned = { payload, name ->
                 val player = payload.toTournamentPlayer(name)
                 save(current.copy(players = current.players + player))
+                showAddPlayer = false
             },
-            onDismiss = { showQrScan = false },
+            onDismiss = { showAddPlayer = false },
         )
         return
     }
 
-    // ── Edit player scores ────────────────────────────────────────────
-    editingPlayer?.let { player ->
-        EditPlayerScoreScreen(
-            player = player,
-            courseHoles = current.players.firstOrNull { it.source == PlayerSource.SELF.name }
-                ?.holes ?: emptyList(),
-            onSave = { updated ->
-                save(current.copy(players = current.players.map { if (it.id == updated.id) updated else it }))
-                editingPlayer = null
-            },
-            onDismiss = { editingPlayer = null },
-        )
-        return
-    }
-
-    // ── Add manual player ─────────────────────────────────────────────
-    if (showAddManual) {
-        AddManualPlayerDialog(
-            onConfirm = { name ->
-                val blank = TournamentPlayer(
-                    name = name,
-                    holes = emptyList(),
-                    source = PlayerSource.MANUAL.name,
-                )
-                save(current.copy(players = current.players + blank))
-                showAddManual = false
-                editingPlayer = blank.copy(
-                    holes = current.players.firstOrNull { it.source == PlayerSource.SELF.name }
-                        ?.holes?.map { it.copy(strokes = 0, putts = 0) } ?: emptyList()
-                )
-            },
-            onDismiss = { showAddManual = false },
-        )
-    }
-
-    // ── Long-press menu ───────────────────────────────────────────────
+    // ── Rename dialog (long-press player name) ────────────────────────
     longPressPlayer?.let { player ->
-        if (showRenameDialog) {
-            RenamePlayerDialog(
-                current = player.name,
-                onConfirm = { newName ->
-                    save(current.copy(players = current.players.map {
-                        if (it.id == player.id) it.copy(name = newName) else it
-                    }))
-                    showRenameDialog = false
-                    longPressPlayer = null
-                },
-                onDismiss = { showRenameDialog = false; longPressPlayer = null },
-            )
-        } else {
-            PlayerEditMenu(
-                player = player,
-                onEditScores = { editingPlayer = player; longPressPlayer = null },
-                onRename = { showRenameDialog = true },
-                onRemove = {
-                    save(current.copy(players = current.players.filter { it.id != player.id }))
-                    longPressPlayer = null
-                },
-                onDismiss = { longPressPlayer = null },
-            )
-        }
+        RenamePlayerDialog(
+            current = player.name,
+            onConfirm = { newName ->
+                save(current.copy(players = current.players.map {
+                    if (it.id == player.id) it.copy(name = newName) else it
+                }))
+                longPressPlayer = null
+            },
+            onDismiss = { longPressPlayer = null },
+        )
+    }
+
+    // ── Inline stroke editor (tap cell) ──────────────────────────────
+    editingCell?.let { (playerId, holeNumber) ->
+        val currentStrokes = current.players.firstOrNull { it.id == playerId }
+            ?.holes?.firstOrNull { it.number == holeNumber }?.strokes ?: 0
+        StrokePickerDialog(
+            current = currentStrokes,
+            onSelect = { val_ ->
+                val pIdx = current.players.indexOfFirst { it.id == playerId }
+                if (pIdx >= 0) {
+                    val players = current.players.toMutableList()
+                    val holes = players[pIdx].holes.toMutableList()
+                    val hIdx = holes.indexOfFirst { it.number == holeNumber }
+                    if (hIdx >= 0) {
+                        holes[hIdx] = holes[hIdx].copy(strokes = val_)
+                    } else {
+                        val par = current.players.firstOrNull { it.source == PlayerSource.SELF.name }
+                            ?.holes?.firstOrNull { it.number == holeNumber }?.par ?: 4
+                        holes.add(HoleScore(number = holeNumber, par = par, strokes = val_))
+                    }
+                    players[pIdx] = players[pIdx].copy(holes = holes)
+                    save(current.copy(players = players))
+                }
+                editingCell = null
+            },
+            onDismiss = { editingCell = null },
+        )
     }
 
     Scaffold(
@@ -148,100 +126,154 @@ fun TournamentDetailScreen(
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 },
                 actions = {
-                    IconButton(onClick = { showQrScan = true }) {
-                        Icon(Icons.Default.QrCodeScanner, "Scan Score")
-                    }
-                    IconButton(onClick = { showAddManual = true }) {
+                    IconButton(onClick = { showAddPlayer = true }) {
                         Icon(Icons.Default.Add, "Add Player")
                     }
                 },
             )
         }
     ) { padding ->
-        if (sorted.isEmpty()) {
+        if (current.players.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No players yet. Tap + or scan a QR code.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("No players yet. Tap + to add.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             Column(Modifier.fillMaxSize().padding(padding)) {
                 ScoreGrid(
-                    players = sorted,
+                    players = current.players,
                     onLongPress = { longPressPlayer = it },
+                    onTapCell = { playerId, hole ->
+                        val p = current.players.firstOrNull { it.id == playerId }
+                        val h = p?.holes?.firstOrNull { it.number == hole }
+                        editingCell = playerId to hole
+                    },
                 )
             }
         }
     }
 }
 
-// ─── Score grid ──────────────────────────────────────────────────────
+// ─── Score grid ───────────────────────────────────────────────────────
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ScoreGrid(
     players: List<TournamentPlayer>,
     onLongPress: (TournamentPlayer) -> Unit,
+    onTapCell: (playerId: String, hole: Int) -> Unit,
 ) {
-    val hScroll = rememberScrollState()
-    val maxHoles = players.maxOfOrNull { it.holes.maxOfOrNull { h -> h.number } ?: 0 } ?: 18
-    val holeNumbers = (1..maxHoles).toList()
+    val holeNumbers = players
+        .flatMap { it.holes }
+        .filter { it.strokes > 0 }
+        .map { it.number }
+        .toSortedSet()
+        .toList()
 
-    Column {
-        // Header row
-        Row(Modifier.horizontalScroll(hScroll)) {
-            GridCell(text = "Player", width = NameW, header = true, align = TextAlign.Start)
-            holeNumbers.forEach { n -> GridCell(text = "$n", width = CellW, header = true) }
-            GridCell(text = "Tot", width = TotalW, header = true)
-            GridCell(text = "+/−", width = TotalW, header = true)
-        }
-        HorizontalDivider()
-
-        LazyColumn {
-            itemsIndexed(players) { _, player ->
-                Row(
-                    Modifier
-                        .horizontalScroll(hScroll)
-                        .background(
-                            if (player.source == PlayerSource.SELF.name)
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                            else Color.Transparent
-                        ),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // Name cell — long press triggers edit menu
+    LazyColumn {
+        // Header: player names
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.width(LabelW))
+                players.forEach { player ->
                     Box(
                         Modifier
-                            .width(NameW)
-                            .combinedClickable(
-                                onClick = {},
-                                onLongClick = { onLongPress(player) },
-                            )
-                            .padding(horizontal = 4.dp, vertical = 8.dp)
+                            .width(CellW)
+                            .combinedClickable(onClick = {}, onLongClick = { onLongPress(player) })
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             player.name,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (player.source == PlayerSource.SELF.name) FontWeight.Bold else FontWeight.Normal,
+                            color = if (player.source == PlayerSource.SELF.name) GolfGreen else MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
                         )
                     }
+                }
+            }
+            HorizontalDivider()
+        }
 
-                    holeNumbers.forEach { n ->
-                        val hole = player.holes.firstOrNull { it.number == n }
+        // One row per hole
+        itemsIndexed(holeNumbers) { _, n ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "H$n",
+                    modifier = Modifier.width(LabelW).padding(horizontal = 4.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                players.forEach { player ->
+                    val hole = player.holes.firstOrNull { it.number == n }
+                    Box(
+                        Modifier.width(CellW).combinedClickable(
+                            onClick = { onTapCell(player.id, n) },
+                            onLongClick = {},
+                        ),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         ScoreCell(hole)
                     }
+                }
+            }
+            HorizontalDivider(thickness = 0.5.dp)
+        }
 
-                    // Total
+        // Total row
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Tot",
+                    modifier = Modifier.width(LabelW).padding(horizontal = 4.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                players.forEach { player ->
                     val total = player.totalStrokes
-                    GridCell(text = if (total > 0) "$total" else "—", width = TotalW, bold = true)
+                    Text(
+                        if (total > 0) "$total" else "—",
+                        modifier = Modifier.width(CellW).padding(vertical = 8.dp),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+            HorizontalDivider(thickness = 0.5.dp)
+        }
 
-                    // +/−
+        // +/− row
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "+/−",
+                    modifier = Modifier.width(LabelW).padding(horizontal = 4.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+                players.forEach { player ->
+                    val total = player.totalStrokes
                     val diff = player.scoreVsPar
                     val diffStr = when { total == 0 -> "—"; diff > 0 -> "+$diff"; diff == 0 -> "E"; else -> "$diff" }
                     val diffColor = when { total == 0 -> MaterialTheme.colorScheme.onSurfaceVariant; diff < 0 -> GolfGreen; diff == 0 -> MaterialTheme.colorScheme.onSurface; else -> Color.Red }
-                    GridCell(text = diffStr, width = TotalW, color = diffColor, bold = true)
+                    Text(
+                        diffStr,
+                        modifier = Modifier.width(CellW).padding(vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = diffColor,
+                        textAlign = TextAlign.Center,
+                    )
                 }
-                HorizontalDivider(thickness = 0.5.dp)
             }
         }
     }
@@ -272,7 +304,8 @@ private fun ScoreCell(hole: HoleScore?) {
     ) {
         Text(
             if (strokes > 0) "$strokes" else "—",
-            fontSize = 11.sp,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
             color = textColor,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(vertical = 6.dp),
@@ -280,67 +313,49 @@ private fun ScoreCell(hole: HoleScore?) {
     }
 }
 
-@Composable
-private fun GridCell(
-    text: String,
-    width: Dp,
-    header: Boolean = false,
-    bold: Boolean = false,
-    color: Color = Color.Unspecified,
-    align: TextAlign = TextAlign.Center,
-) {
-    Text(
-        text,
-        modifier = Modifier.width(width).padding(horizontal = 2.dp, vertical = 8.dp),
-        fontSize = if (header) 10.sp else 12.sp,
-        fontWeight = if (header || bold) FontWeight.Bold else FontWeight.Normal,
-        color = if (color != Color.Unspecified) color else if (header) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-        textAlign = align,
-        maxLines = 1,
-    )
-}
-
-// ─── Dialogs / menus ─────────────────────────────────────────────────
+// ─── Dialogs ──────────────────────────────────────────────────────────
 
 @Composable
-private fun PlayerEditMenu(
-    player: TournamentPlayer,
-    onEditScores: () -> Unit,
-    onRename: () -> Unit,
-    onRemove: () -> Unit,
+private fun AddPlayerSheet(
+    onAdd: (String) -> Unit,
+    onScanned: (QrRoundPayload, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(player.name) },
-        text = {
-            Column {
-                TextButton(onClick = onEditScores, modifier = Modifier.fillMaxWidth()) { Text("Edit Scores") }
-                TextButton(onClick = onRename, modifier = Modifier.fillMaxWidth()) { Text("Rename") }
-                TextButton(onClick = onRemove, modifier = Modifier.fillMaxWidth()) { Text("Remove", color = Color.Red) }
-            }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    )
-}
-
-@Composable
-private fun AddManualPlayerDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
     var name by remember { mutableStateOf("") }
+    var showQrScan by remember { mutableStateOf(false) }
+
+    if (showQrScan) {
+        CollectScoresScreen(
+            playerName = name.trim(),
+            onScanned = { payload, playerName ->
+                onScanned(payload, playerName)
+            },
+            onDismiss = { showQrScan = false },
+        )
+        return
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Player") },
         text = {
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Player name") },
-                singleLine = true,
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Player name") },
+                    singleLine = true,
+                )
+                TextButton(
+                    onClick = { showQrScan = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Scan QR Code")
+                }
+            }
         },
         confirmButton = {
-            TextButton(onClick = { if (name.isNotBlank()) onConfirm(name.trim()) }, enabled = name.isNotBlank()) {
+            TextButton(onClick = { if (name.isNotBlank()) onAdd(name.trim()) }, enabled = name.isNotBlank()) {
                 Text("Add", fontWeight = FontWeight.Bold)
             }
         },
@@ -371,13 +386,57 @@ private fun RenamePlayerDialog(current: String, onConfirm: (String) -> Unit, onD
     )
 }
 
+@Composable
+private fun StrokePickerDialog(current: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Strokes") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Two rows of 5
+                listOf(1..5, 6..10).forEach { range ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        range.forEach { n ->
+                            val selected = n == current
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .aspectRatio(1f)
+                                    .background(
+                                        if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                        CircleShape,
+                                    )
+                                    .clickable { onSelect(n); onDismiss() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "$n",
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = { onSelect(0); onDismiss() }) { Text("Clear") }
+        },
+    )
+}
+
 // ─── QR payload → TournamentPlayer ───────────────────────────────────
 
 private fun QrRoundPayload.toTournamentPlayer(name: String): TournamentPlayer {
     val holes = h.mapIndexed { idx, scores ->
         HoleScore(
             number = idx + 1,
-            par = 4, // par not in payload; host can edit via EditPlayerScoreScreen
+            par = 4,
             strokes = scores.getOrElse(0) { 0 },
             putts = scores.getOrElse(1) { 0 },
         )
