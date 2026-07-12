@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.nicechester.gobirdie.core.model.Course
+import io.github.nicechester.gobirdie.core.model.Round
 import io.github.nicechester.gobirdie.core.model.Tournament
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -97,15 +98,6 @@ fun CreateTournamentScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
-
-            val latest = remember { viewModel.latestRound() }
-            if (latest != null) {
-                Text(
-                    "Your latest round (${latest.courseName}) will be added automatically.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }

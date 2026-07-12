@@ -54,6 +54,12 @@ class AppState @Inject constructor(
     private val _showIdlePrompt = MutableStateFlow(false)
     val showIdlePrompt: StateFlow<Boolean> = _showIdlePrompt
 
+    private val _selectedTournamentId = MutableStateFlow<String?>(null)
+    val selectedTournamentId: StateFlow<String?> = _selectedTournamentId
+
+    private val _selectedScorecardTab = MutableStateFlow(0)
+    val selectedScorecardTab: StateFlow<Int> = _selectedScorecardTab
+
     private var autoSaveJob: Job? = null
     private var idleJob: Job? = null
     private var holeObserverJob: Job? = null
@@ -125,6 +131,20 @@ class AppState @Inject constructor(
 
     fun dismissIdlePrompt() {
         resetIdleTimer()
+    }
+
+    // Tournament selection
+    fun selectTournament(id: String) {
+        _selectedTournamentId.value = id
+        _selectedScorecardTab.value = 1  // Switch to Tournaments tab
+    }
+
+    fun clearSelectedTournament() {
+        _selectedTournamentId.value = null
+    }
+
+    fun setScorecardTab(index: Int) {
+        _selectedScorecardTab.value = index
     }
 
     // Resume

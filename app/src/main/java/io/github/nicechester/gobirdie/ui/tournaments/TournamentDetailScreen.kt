@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.WifiTethering
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.nicechester.gobirdie.AppState
 import io.github.nicechester.gobirdie.core.model.HoleScore
 import io.github.nicechester.gobirdie.core.model.PlayerSource
 import io.github.nicechester.gobirdie.core.model.Tournament
@@ -30,16 +32,21 @@ import io.github.nicechester.gobirdie.core.model.TournamentPlayer
 import io.github.nicechester.gobirdie.ui.scorecards.CollectScoresScreen
 import io.github.nicechester.gobirdie.ui.scorecards.QrRoundPayload
 import java.util.UUID
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 
 private val GolfGreen = Color(0xFF2E7D32)
 private val CellW: Dp = 60.dp
 private val LabelW: Dp = 44.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalCoroutinesApi::class)
 @Composable
 fun TournamentDetailScreen(
     tournament: Tournament,
     viewModel: TournamentsViewModel,
+    appState: AppState,
     onDismiss: () -> Unit,
 ) {
     var current by remember { mutableStateOf(tournament) }
@@ -52,6 +59,17 @@ fun TournamentDetailScreen(
         viewModel.save(t)
         current = t
     }
+
+    // Reload tournament when screen comes to foreground
+    LaunchedEffect(Unit) {
+        viewModel.load(current.id)?.let { current = it }
+    }
+
+    val activeSession by appState.activeSession.collectAsStateWithLifecycle()
+    val activeRound by remember(activeSession) {
+        activeSession?.round ?: flowOf(null)
+    }.collectAsStateWithLifecycle(null)
+    val isLive = activeRound?.courseId == current.courseId
 
     // ── Add player sheet ──────────────────────────────────────────────
     if (showAddPlayer) {
@@ -126,6 +144,26 @@ fun TournamentDetailScreen(
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 },
                 actions = {
+                    if (isLive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 4.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.WifiTethering,
+                                contentDescription = null,
+                                tint = GolfGreen,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "Live",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF2E7D32),
+                            )
+                        }
+                    }
                     IconButton(onClick = { showAddPlayer = true }) {
                         Icon(Icons.Default.Add, "Add Player")
                     }
@@ -162,12 +200,14 @@ private fun ScoreGrid(
     onLongPress: (TournamentPlayer) -> Unit,
     onTapCell: (playerId: String, hole: Int) -> Unit,
 ) {
-    val holeNumbers = players
-        .flatMap { it.holes }
-        .filter { it.strokes > 0 }
-        .map { it.number }
-        .toSortedSet()
-        .toList()
+    val holeNumbers = run {
+        val selfHoles = players.firstOrNull { it.source == PlayerSource.SELF.name }?.holes
+        if (selfHoles != null && selfHoles.isNotEmpty()) {
+            selfHoles.map { it.number }.sorted()
+        } else {
+            players.flatMap { it.holes }.filter { it.strokes > 0 }.map { it.number }.toSortedSet().toList()
+        }
+    }
 
     LazyColumn {
         // Header: player names

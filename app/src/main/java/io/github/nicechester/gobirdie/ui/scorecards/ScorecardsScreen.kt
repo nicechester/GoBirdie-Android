@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import io.github.nicechester.gobirdie.AppState
 import io.github.nicechester.gobirdie.core.model.*
 import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import io.github.nicechester.gobirdie.ui.tournaments.TournamentDetailScreen
@@ -55,10 +56,14 @@ private val GolfGreen = Color(0xFF2E7D32)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
+fun ScorecardsScreen(
+    viewModel: ScorecardsViewModel = hiltViewModel(),
+    appState: io.github.nicechester.gobirdie.AppState = hiltViewModel(),
+) {
     val rounds by viewModel.rounds.collectAsState()
+    val selectedTournamentId by appState.selectedTournamentId.collectAsState()
+    val selectedTab by appState.selectedScorecardTab.collectAsState()
     var selectedRound by remember { mutableStateOf<Round?>(null) }
-    var selectedTab by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -66,6 +71,7 @@ fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
         ScorecardDetail(
             round = selectedRound!!,
             viewModel = viewModel,
+            appState = appState,
             onDismiss = { selectedRound = null },
         )
         return
@@ -73,8 +79,8 @@ fun ScorecardsScreen(viewModel: ScorecardsViewModel = hiltViewModel()) {
 
     val tabRow: @Composable () -> Unit = {
         TabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Rounds") })
-            Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Tournaments") })
+            Tab(selected = selectedTab == 0, onClick = { appState.setScorecardTab(0) }, text = { Text("Rounds") })
+            Tab(selected = selectedTab == 1, onClick = { appState.setScorecardTab(1) }, text = { Text("Tournaments") })
         }
     }
 
@@ -163,8 +169,14 @@ private fun RoundRow(round: Round, modifier: Modifier = Modifier, onClick: () ->
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDismiss: () -> Unit) {
+private fun ScorecardDetail(
+    round: Round,
+    viewModel: ScorecardsViewModel,
+    appState: io.github.nicechester.gobirdie.AppState,
+    onDismiss: () -> Unit,
+) {
     var currentRound by remember { mutableStateOf(round) }
+    val selectedTournamentId by appState.selectedTournamentId.collectAsState()
     val context = LocalContext.current
     val sgBaseline = remember {
         val prefs = context.getSharedPreferences("gobirdie_settings", android.content.Context.MODE_PRIVATE)
@@ -178,7 +190,6 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
     val holesWithShots = currentRound.holes.filter { it.shots.isNotEmpty() }
     var showShotMap by remember { mutableStateOf(false) }
     var showQrShare by remember { mutableStateOf(false) }
-    var tournamentToOpen by remember { mutableStateOf<Tournament?>(null) }
     val tournamentsViewModel: TournamentsViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val course = remember(currentRound.courseId) { viewModel.loadCourse(currentRound.courseId) }
 
@@ -187,13 +198,17 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
         return
     }
 
-    tournamentToOpen?.let { t ->
-        TournamentDetailScreen(
-            tournament = t,
-            viewModel = tournamentsViewModel,
-            onDismiss = { tournamentToOpen = null },
-        )
-        return
+    selectedTournamentId?.let { id ->
+        val t = remember(id) { tournamentsViewModel.load(id) }
+        if (t != null) {
+            TournamentDetailScreen(
+                tournament = t,
+                viewModel = tournamentsViewModel,
+                appState = appState,
+                onDismiss = { appState.clearSelectedTournament() },
+            )
+            return
+        }
     }
 
     if (showShotMap) {
@@ -222,7 +237,10 @@ private fun ScorecardDetail(round: Round, viewModel: ScorecardsViewModel, onDism
                     IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
                 },
                 actions = {
-                    IconButton(onClick = { tournamentToOpen = viewModel.createTournamentFromRound(currentRound) }) {
+                    IconButton(onClick = {
+                        val t = viewModel.createTournamentFromRound(currentRound)
+                        appState.selectTournament(t.id)
+                    }) {
                         Icon(Icons.Default.EmojiEvents, "Start Tournament")
                     }
                     IconButton(onClick = { showQrShare = true }) {
