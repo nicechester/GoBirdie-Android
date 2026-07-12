@@ -20,17 +20,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import io.github.nicechester.gobirdie.AppState
 import io.github.nicechester.gobirdie.core.model.Tournament
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TournamentsListScreen(
     viewModel: TournamentsViewModel = hiltViewModel(),
+    appState: AppState = hiltViewModel(),
     tabRow: @Composable () -> Unit = {},
 ) {
     val tournaments by viewModel.tournaments.collectAsState()
+    val selectedId by appState.selectedTournamentId.collectAsState()
     var showCreate by remember { mutableStateOf(false) }
-    var selectedId by remember { mutableStateOf<String?>(null) }
     var renamingTournament by remember { mutableStateOf<Tournament?>(null) }
     var renameText by remember { mutableStateOf("") }
 
@@ -42,8 +44,9 @@ fun TournamentsListScreen(
             TournamentDetailScreen(
                 tournament = t,
                 viewModel = viewModel,
+                appState = appState,
                 onDismiss = {
-                    selectedId = null
+                    appState.clearSelectedTournament()
                     viewModel.load()
                 },
             )
@@ -70,7 +73,7 @@ fun TournamentsListScreen(
             onCreated = { tournament ->
                 viewModel.save(tournament)
                 showCreate = false
-                selectedId = tournament.id
+                appState.selectTournament(tournament.id)
             },
             onDismiss = { showCreate = false },
         )
@@ -125,7 +128,7 @@ fun TournamentsListScreen(
                     ) {
                         TournamentRow(
                             tournament = tournament,
-                            onClick = { selectedId = tournament.id },
+                            onClick = { appState.selectTournament(tournament.id) },
                             onLongClick = { renamingTournament = tournament; renameText = tournament.title ?: tournament.courseName },
                         )
                     }

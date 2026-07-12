@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
+import io.github.nicechester.gobirdie.ui.tournaments.TournamentsViewModel
+import kotlinx.coroutines.launch
 
 private fun hasLocationPermission(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -33,6 +35,8 @@ fun RoundScreen(appState: AppState) {
     val pendingResume by appState.pendingResume.collectAsState()
     val showIdlePrompt by appState.showIdlePrompt.collectAsState()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     var showStartRound by remember { mutableStateOf(false) }
 
@@ -84,15 +88,46 @@ fun RoundScreen(appState: AppState) {
     }
 
     if (session != null && course != null) {
-        ActiveRoundScreen(
-            session = session!!,
-            course = course!!,
-            playerLocation = playerLocation,
-            onEndRound = { appState.endActiveRound() },
-            onCancelRound = { appState.cancelActiveRound() },
-            onSyncWatch = { appState.syncWear() },
-            onUserInteraction = { appState.resetIdleTimer() },
-        )
+        val tournamentsVm: TournamentsViewModel = hiltViewModel()
+        val activeRound by session!!.round.collectAsState()
+        val hasTournament = remember(activeRound.courseId) {
+            tournamentsVm.loadAll().any { it.courseId == activeRound.courseId }
+        }
+
+        // Sync active round to tournament whenever round updates
+        LaunchedEffect(activeRound) {
+            val tournaments = tournamentsVm.loadAll()
+            val tournament = tournaments.firstOrNull { it.courseId == activeRound.courseId } ?: return@LaunchedEffect
+            val idx = tournament.players.indexOfFirst { it.source == "SELF" }
+            if (idx >= 0) {
+                val updated = tournament.copy(
+                    players = tournament.players.toMutableList().also {
+                        it[idx] = it[idx].copy(holes = activeRound.holes)
+                    }
+                )
+                tournamentsVm.save(updated)
+            }
+        }
+
+        Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+            Box(Modifier.padding(padding)) {
+                ActiveRoundScreen(
+                    session = session!!,
+                    course = course!!,
+                    playerLocation = playerLocation,
+                    onEndRound = { appState.endActiveRound() },
+                    onCancelRound = { appState.cancelActiveRound() },
+                    onSyncWatch = { appState.syncWear() },
+                    onUserInteraction = { appState.resetIdleTimer() },
+                    onCreateTournament = if (!hasTournament) {{
+                        val r = session!!.round.value
+                        val t = tournamentsVm.createTournament(r.courseId, r.courseName, tournamentsVm.todayDate(), null, seedRound = r)
+                        tournamentsVm.save(t)
+                        scope.launch { snackbarHostState.showSnackbar("Tournament created for ${r.courseName}") }
+                    }} else null,
+                )
+            }
+        }
     } else if (showStartRound) {
         val vm: StartRoundViewModel = hiltViewModel()
 
