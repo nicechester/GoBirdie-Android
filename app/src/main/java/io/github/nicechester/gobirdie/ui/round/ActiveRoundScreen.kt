@@ -47,6 +47,7 @@ fun ActiveRoundScreen(
     onCancelRound: () -> Unit,
     onSyncWatch: () -> Unit = {},
     onUserInteraction: () -> Unit = {},
+    onCreateTournament: (() -> Unit)? = null,
 ) {
     val round by session.round.collectAsState()
     val holeIndex by session.currentHoleIndex.collectAsState()
@@ -93,6 +94,14 @@ fun ActiveRoundScreen(
                     Icon(Icons.Default.MoreVert, "Menu")
                 }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    onCreateTournament?.let { create ->
+                        DropdownMenuItem(
+                            text = { Text("New Tournament") },
+                            onClick = { showMenu = false; create() },
+                            leadingIcon = { Icon(Icons.Default.EmojiEvents, null) },
+                        )
+                        HorizontalDivider()
+                    }
                     DropdownMenuItem(
                         text = { Text("Sync Watch") },
                         onClick = { showMenu = false; onSyncWatch() },

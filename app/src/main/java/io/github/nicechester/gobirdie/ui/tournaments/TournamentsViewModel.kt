@@ -45,18 +45,16 @@ class TournamentsViewModel @Inject constructor(
 
     fun load(id: String): Tournament? = tournamentStore.load(id)
 
+    fun loadAll(): List<Tournament> = tournamentStore.loadAll()
+
     fun loadCourses(): List<Course> = courseStore.loadAll()
 
-    /** Latest completed round — auto-added as SELF when creating a tournament. */
-    fun latestRound(): Round? = roundStore.loadAll().firstOrNull()
-
-    fun createTournament(courseId: String, courseName: String, date: String, title: String?): Tournament {
-        val selfRound = latestRound()
-        val players = if (selfRound != null) {
+    fun createTournament(courseId: String, courseName: String, date: String, title: String?, seedRound: Round? = null): Tournament {
+        val players = if (seedRound != null) {
             listOf(
                 TournamentPlayer(
                     name = "Me",
-                    holes = selfRound.holes,
+                    holes = seedRound.holes,
                     source = PlayerSource.SELF.name,
                 )
             )
