@@ -52,6 +52,7 @@ fun CollectScoresScreen(
     ) { granted -> hasCamera = granted }
 
     var scannedPayload by remember { mutableStateOf<QrRoundPayload?>(null) }
+    var cameraError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         if (!hasCamera) permissionLauncher.launch(Manifest.permission.CAMERA)
@@ -87,7 +88,21 @@ fun CollectScoresScreen(
         }
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            if (hasCamera) {
+            if (cameraError != null) {
+                Column(
+                    Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("Camera unavailable", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(cameraError ?: "Unknown error", style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = onDismiss) {
+                        Text("Back")
+                    }
+                }
+            } else if (hasCamera) {
                 CameraPreview(
                     onQrDecoded = { json ->
                         if (scannedPayload == null) {
@@ -96,6 +111,7 @@ fun CollectScoresScreen(
                                 ?.let { scannedPayload = it }
                         }
                     },
+                    onError = { error -> cameraError = error },
                     modifier = Modifier.fillMaxSize(),
                 )
                 Text(
@@ -126,7 +142,11 @@ fun CollectScoresScreen(
 // ─── Camera preview with ZXing analyzer ─────────────────────────────
 
 @Composable
-private fun CameraPreview(onQrDecoded: (String) -> Unit, modifier: Modifier = Modifier) {
+private fun CameraPreview(
+    onQrDecoded: (String) -> Unit,
+    onError: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
@@ -136,7 +156,12 @@ private fun CameraPreview(onQrDecoded: (String) -> Unit, modifier: Modifier = Mo
             val previewView = PreviewView(ctx)
             val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
             cameraProviderFuture.addListener({
-                val cameraProvider = cameraProviderFuture.get()
+                val cameraProvider = try {
+                    cameraProviderFuture.get()
+                } catch (e: Exception) {
+                    onError("Camera not available: ${e.message}")
+                    return@addListener
+                }
                 val preview = Preview.Builder().build()
                     .also { it.surfaceProvider = previewView.surfaceProvider }
                 val analysis = ImageAnalysis.Builder()
@@ -151,6 +176,8 @@ private fun CameraPreview(onQrDecoded: (String) -> Unit, modifier: Modifier = Mo
                         preview,
                         analysis,
                     )
+                }.onFailure { e ->
+                    onError("Failed to start camera: ${e.message}")
                 }
             }, ContextCompat.getMainExecutor(ctx))
             previewView
