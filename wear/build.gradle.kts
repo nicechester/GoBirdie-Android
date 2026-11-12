@@ -13,12 +13,12 @@ plugins {
 
 android {
     namespace = "io.github.nicechester.gobirdie.wear"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 30
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 29
         versionName = "1.4.7"
     }

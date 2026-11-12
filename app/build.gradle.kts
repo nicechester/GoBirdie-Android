@@ -15,12 +15,12 @@ plugins {
 
 android {
     namespace = "io.github.nicechester.gobirdie"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "io.github.nicechester.gobirdie"
         minSdk = 27
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 34
         versionName = "1.5.2"
         testInstrumentationRunner = "io.github.nicechester.gobirdie.HiltTestRunner"
