@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GoBirdie</string>
+
+    <!-- Tabs -->
+    <string name="tab_round">라운드</string>
+    <string name="tab_scorecards">스코어카드</string>
+    <string name="tab_settings">설정</string>
+
+    <!-- Settings -->
+    <string name="settings_courses">코스</string>
+    <string name="settings_manage_courses">코스 관리</string>
+    <string name="settings_equipment">장비</string>
+    <string name="settings_my_clubs">내 클럽</string>
+    <string name="settings_tee">티</string>
+    <string name="settings_tee_color">티 색상</string>
+    <string name="settings_insights">인사이트</string>
+    <string name="settings_sg_baseline">SG 기준</string>
+    <string name="settings_sg_baseline_footer">인사이트는 이 기준과 비교하여 라운드를 분석합니다.</string>
+    <string name="settings_desktop_sync">데스크톱 동기화</string>
+    <string name="settings_sync_server">동기화 서버</string>
+    <string name="settings_sync_running">포트 %d에서 실행 중 (WiFi 전용)</string>
+    <string name="settings_sync_off">꺼짐</string>
+    <string name="settings_support_development">개발 지원</string>
+    <string name="settings_tip_message">GoBirdie는 광고 없이 무료입니다.</string>
+    <string name="settings_tip_cta">앱이 마음에 드시면 한 잔 사주세요! 🍺</string>
+    <string name="settings_tip_footer">후원금은 개발 비용에 사용되며 앱을 무료로 유지하는 데 도움이 됩니다.</string>
+    <string name="settings_about">정보</string>
+    <string name="settings_version">버전</string>
+    <string name="settings_manual">매뉴얼</string>
+    <string name="settings_map_data">지도 데이터</string>
+    <string name="settings_maps">지도</string>
+    <string name="settings_license">라이선스</string>
+    <string name="settings_language">언어</string>
+    <string name="settings_language_footer">앱에서 사용할 언어를 선택하세요.</string>
+
+    <!-- Languages -->
+    <string name="language_system">시스템 기본값</string>
+    <string name="language_en">English</string>
+    <string name="language_ko">한국어</string>
+    <string name="language_es">Español</string>
+    <string name="language_ja">日本語</string>
+
+    <!-- Tee Colors -->
+    <string name="tee_black">블랙</string>
+    <string name="tee_blue">블루</string>
+    <string name="tee_white">화이트</string>
+    <string name="tee_yellow">옐로우</string>
+    <string name="tee_red">레드</string>
+
+    <!-- SG Baselines -->
+    <string name="baseline_scratch">스크래치</string>
+    <string name="baseline_single">싱글 핸디캡</string>
+    <string name="baseline_bogey">보기 골퍼</string>
+    <string name="baseline_high_cap">하이 핸디캡</string>
+
+    <!-- Courses -->
+    <string name="courses_title">코스</string>
+    <string name="courses_search_placeholder">다운로드할 코스 검색</string>
+    <string name="courses_search">검색</string>
+    <string name="courses_no_courses">다운로드한 코스가 없습니다</string>
+    <string name="courses_no_results">\"%s\"에 대한 코스를 찾을 수 없습니다</string>
+    <string name="courses_search_failed">검색 실패: %s</string>
+    <string name="courses_download_failed">다운로드 실패: %s</string>
+    <string name="courses_saved">저장된 코스 (%d)</string>
+    <string name="courses_holes">%d홀</string>
+
+    <!-- My Clubs -->
+    <string name="clubs_title">내 클럽</string>
+    <string name="clubs_footer">선택한 클럽은 라운드 중 샷 마크 선택기에 표시됩니다.</string>
+    <string name="clubs_reset">기본값으로 재설정</string>
+
+    <!-- Club Names -->
+    <string name="club_unknown">알 수 없음</string>
+    <string name="club_driver">드라이버</string>
+    <string name="club_md">미니 드라이버</string>
+    <string name="club_3w">3번 우드</string>
+    <string name="club_5w">5번 우드</string>
+    <string name="club_7w">7번 우드</string>
+    <string name="club_9w">9번 우드</string>
+    <string name="club_3h">3번 하이브리드</string>
+    <string name="club_4h">4번 하이브리드</string>
+    <string name="club_5h">5번 하이브리드</string>
+    <string name="club_4i">4번 아이언</string>
+    <string name="club_5i">5번 아이언</string>
+    <string name="club_6i">6번 아이언</string>
+    <string name="club_7i">7번 아이언</string>
+    <string name="club_8i">8번 아이언</string>
+    <string name="club_9i">9번 아이언</string>
+    <string name="club_pw">피칭 웨지</string>
+    <string name="club_gw">갭 웨지</string>
+    <string name="club_sw">샌드 웨지</string>
+    <string name="club_lw">로브 웨지</string>
+    <string name="club_putter">퍼터</string>
+
+    <!-- Round -->
+    <string name="round_title">라운드</string>
+    <string name="round_no_active">진행 중인 라운드 없음</string>
+    <string name="round_start">라운드 시작</string>
+    <string name="round_start_description">라운드를 시작하여 거리를 추적하고\n샷을 기록하세요</string>
+    <string name="round_hole">%d번 홀</string>
+    <string name="round_par">파 %d</string>
+    <string name="round_hole_par_yards">%1$d번 홀  파 %2$d  %3$d야드</string>
+    <string name="round_start_on_hole">%d번 홀에서 시작</string>
+    <string name="round_which_hole">몇 번 홀에서 시작하시나요?</string>
+    <string name="round_mark_shot">샷 기록</string>
+    <string name="round_strokes">타수</string>
+    <string name="round_putts">퍼트</string>
+    <string name="round_penalty">페널티</string>
+    <string name="round_scorecard">스코어카드</string>
+    <string name="round_total">합계</string>
+    <string name="round_tot">합계</string>
+    <string name="round_plus_minus">+/−</string>
+    <string name="round_pen">페널티</string>
+    <string name="round_select_club">클럽 선택</string>
+    <string name="round_move_shots_to">샷을 홀로 이동…</string>
+    <string name="round_sync_watch">워치 동기화</string>
+    <string name="round_end">라운드 종료</string>
+    <string name="round_cancel">라운드 취소</string>
+    <string name="round_save_finish">이 라운드를 저장하고 종료하시겠습니까?</string>
+    <string name="round_finish">완료</string>
+    <string name="round_next">다음</string>
+    <string name="round_prev">이전</string>
+
+    <!-- Distance -->
+    <string name="distance_front">앞</string>
+    <string name="distance_flag">핀</string>
+    <string name="distance_back">뒤</string>
+    <string name="distance_yds">야드</string>
+
+    <!-- Scorecards -->
+    <string name="scorecards_title">스코어카드</string>
+    <string name="scorecards_rounds">라운드</string>
+    <string name="scorecards_tournaments">토너먼트</string>
+    <string name="scorecards_no_scorecards">스코어카드 없음</string>
+    <string name="scorecards_no_scorecards_desc">완료된 라운드가 여기에 표시됩니다</string>
+
+    <!-- Insights -->
+    <string name="insights_title">💡 주요 인사이트</string>
+    <string name="insights_vs_baseline">vs %s</string>
+
+    <!-- Common -->
+    <string name="common_done">완료</string>
+    <string name="common_cancel">취소</string>
+    <string name="common_confirm">확인</string>
+    <string name="common_edit">편집</string>
+    <string name="common_add">추가</string>
+    <string name="common_delete">삭제</string>
+    <string name="common_save">저장</string>
+    <string name="common_back">뒤로</string>
+    <string name="common_clear">지우기</string>
+</resources>

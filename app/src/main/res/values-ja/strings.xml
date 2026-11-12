@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GoBirdie</string>
+
+    <!-- Tabs -->
+    <string name="tab_round">ラウンド</string>
+    <string name="tab_scorecards">スコアカード</string>
+    <string name="tab_settings">設定</string>
+
+    <!-- Settings -->
+    <string name="settings_courses">コース</string>
+    <string name="settings_manage_courses">コース管理</string>
+    <string name="settings_equipment">装備</string>
+    <string name="settings_my_clubs">マイクラブ</string>
+    <string name="settings_tee">ティー</string>
+    <string name="settings_tee_color">ティーカラー</string>
+    <string name="settings_insights">インサイト</string>
+    <string name="settings_sg_baseline">SG基準</string>
+    <string name="settings_sg_baseline_footer">インサイトはこの基準と比較してラウンドを分析します。</string>
+    <string name="settings_desktop_sync">デスクトップ同期</string>
+    <string name="settings_sync_server">同期サーバー</string>
+    <string name="settings_sync_running">ポート%dで実行中（WiFiのみ）</string>
+    <string name="settings_sync_off">オフ</string>
+    <string name="settings_support_development">開発を支援</string>
+    <string name="settings_tip_message">GoBirdieは広告なしで無料です。</string>
+    <string name="settings_tip_cta">アプリを気に入っていただけたら、一杯おごってください！🍺</string>
+    <string name="settings_tip_footer">チップは開発費用に充てられ、アプリを無料で維持するのに役立ちます。</string>
+    <string name="settings_about">情報</string>
+    <string name="settings_version">バージョン</string>
+    <string name="settings_manual">マニュアル</string>
+    <string name="settings_map_data">地図データ</string>
+    <string name="settings_maps">地図</string>
+    <string name="settings_license">ライセンス</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_language_footer">アプリで使用する言語を選択してください。</string>
+
+    <!-- Languages -->
+    <string name="language_system">システムデフォルト</string>
+    <string name="language_en">English</string>
+    <string name="language_ko">한국어</string>
+    <string name="language_es">Español</string>
+    <string name="language_ja">日本語</string>
+
+    <!-- Tee Colors -->
+    <string name="tee_black">ブラック</string>
+    <string name="tee_blue">ブルー</string>
+    <string name="tee_white">ホワイト</string>
+    <string name="tee_yellow">イエロー</string>
+    <string name="tee_red">レッド</string>
+
+    <!-- SG Baselines -->
+    <string name="baseline_scratch">スクラッチ</string>
+    <string name="baseline_single">シングル</string>
+    <string name="baseline_bogey">ボギーゴルファー</string>
+    <string name="baseline_high_cap">ハイハンディキャップ</string>
+
+    <!-- Courses -->
+    <string name="courses_title">コース</string>
+    <string name="courses_search_placeholder">ダウンロードするコースを検索</string>
+    <string name="courses_search">検索</string>
+    <string name="courses_no_courses">ダウンロードしたコースがありません</string>
+    <string name="courses_no_results">「%s」のコースが見つかりません</string>
+    <string name="courses_search_failed">検索失敗: %s</string>
+    <string name="courses_download_failed">ダウンロード失敗: %s</string>
+    <string name="courses_saved">保存済みコース（%d）</string>
+    <string name="courses_holes">%dホール</string>
+
+    <!-- My Clubs -->
+    <string name="clubs_title">マイクラブ</string>
+    <string name="clubs_footer">選択したクラブはラウンド中のショットマーク選択に表示されます。</string>
+    <string name="clubs_reset">デフォルトにリセット</string>
+
+    <!-- Club Names -->
+    <string name="club_unknown">不明</string>
+    <string name="club_driver">ドライバー</string>
+    <string name="club_md">ミニドライバー</string>
+    <string name="club_3w">3番ウッド</string>
+    <string name="club_5w">5番ウッド</string>
+    <string name="club_7w">7番ウッド</string>
+    <string name="club_9w">9番ウッド</string>
+    <string name="club_3h">3番ハイブリッド</string>
+    <string name="club_4h">4番ハイブリッド</string>
+    <string name="club_5h">5番ハイブリッド</string>
+    <string name="club_4i">4番アイアン</string>
+    <string name="club_5i">5番アイアン</string>
+    <string name="club_6i">6番アイアン</string>
+    <string name="club_7i">7番アイアン</string>
+    <string name="club_8i">8番アイアン</string>
+    <string name="club_9i">9番アイアン</string>
+    <string name="club_pw">ピッチングウェッジ</string>
+    <string name="club_gw">ギャップウェッジ</string>
+    <string name="club_sw">サンドウェッジ</string>
+    <string name="club_lw">ロブウェッジ</string>
+    <string name="club_putter">パター</string>
+
+    <!-- Round -->
+    <string name="round_title">ラウンド</string>
+    <string name="round_no_active">アクティブなラウンドなし</string>
+    <string name="round_start">ラウンド開始</string>
+    <string name="round_start_description">ラウンドを開始して距離を追跡し\nショットを記録しましょう</string>
+    <string name="round_hole">%d番ホール</string>
+    <string name="round_par">パー%d</string>
+    <string name="round_hole_par_yards">%1$d番ホール  パー%2$d  %3$dヤード</string>
+    <string name="round_start_on_hole">%d番ホールから開始</string>
+    <string name="round_which_hole">何番ホールから始めますか？</string>
+    <string name="round_mark_shot">ショット記録</string>
+    <string name="round_strokes">打数</string>
+    <string name="round_putts">パット</string>
+    <string name="round_penalty">ペナルティ</string>
+    <string name="round_scorecard">スコアカード</string>
+    <string name="round_total">合計</string>
+    <string name="round_tot">合計</string>
+    <string name="round_plus_minus">+/−</string>
+    <string name="round_pen">ペナ</string>
+    <string name="round_select_club">クラブ選択</string>
+    <string name="round_move_shots_to">ショットをホールに移動…</string>
+    <string name="round_sync_watch">ウォッチ同期</string>
+    <string name="round_end">ラウンド終了</string>
+    <string name="round_cancel">ラウンドキャンセル</string>
+    <string name="round_save_finish">このラウンドを保存して終了しますか？</string>
+    <string name="round_finish">完了</string>
+    <string name="round_next">次へ</string>
+    <string name="round_prev">前へ</string>
+
+    <!-- Distance -->
+    <string name="distance_front">フロント</string>
+    <string name="distance_flag">ピン</string>
+    <string name="distance_back">バック</string>
+    <string name="distance_yds">ヤード</string>
+
+    <!-- Scorecards -->
+    <string name="scorecards_title">スコアカード</string>
+    <string name="scorecards_rounds">ラウンド</string>
+    <string name="scorecards_tournaments">トーナメント</string>
+    <string name="scorecards_no_scorecards">スコアカードなし</string>
+    <string name="scorecards_no_scorecards_desc">完了したラウンドがここに表示されます</string>
+
+    <!-- Insights -->
+    <string name="insights_title">💡 主要インサイト</string>
+    <string name="insights_vs_baseline">vs %s</string>
+
+    <!-- Common -->
+    <string name="common_done">完了</string>
+    <string name="common_cancel">キャンセル</string>
+    <string name="common_confirm">確認</string>
+    <string name="common_edit">編集</string>
+    <string name="common_add">追加</string>
+    <string name="common_delete">削除</string>
+    <string name="common_save">保存</string>
+    <string name="common_back">戻る</string>
+    <string name="common_clear">クリア</string>
+</resources>

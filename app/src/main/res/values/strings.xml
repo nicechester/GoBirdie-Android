@@ -1,4 +1,152 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GoBirdie</string>
+
+    <!-- Tabs -->
+    <string name="tab_round">Round</string>
+    <string name="tab_scorecards">Scorecards</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Settings -->
+    <string name="settings_courses">Courses</string>
+    <string name="settings_manage_courses">Manage Courses</string>
+    <string name="settings_equipment">Equipment</string>
+    <string name="settings_my_clubs">My Clubs</string>
+    <string name="settings_tee">Tee</string>
+    <string name="settings_tee_color">Tee Color</string>
+    <string name="settings_insights">Insights</string>
+    <string name="settings_sg_baseline">SG Baseline</string>
+    <string name="settings_sg_baseline_footer">Insights compare your round against this benchmark.</string>
+    <string name="settings_desktop_sync">Desktop Sync</string>
+    <string name="settings_sync_server">Sync Server</string>
+    <string name="settings_sync_running">Running on port %d (WiFi only)</string>
+    <string name="settings_sync_off">Off</string>
+    <string name="settings_support_development">Support Development</string>
+    <string name="settings_tip_message">GoBirdie is free with no ads.</string>
+    <string name="settings_tip_cta">If you enjoy the app, consider buying me a drink! 🍺</string>
+    <string name="settings_tip_footer">Tips help cover development costs and keep the app free.</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_manual">Manual</string>
+    <string name="settings_map_data">Map Data</string>
+    <string name="settings_maps">Maps</string>
+    <string name="settings_license">License</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_footer">Choose your preferred language for the app.</string>
+
+    <!-- Languages -->
+    <string name="language_system">System Default</string>
+    <string name="language_en">English</string>
+    <string name="language_ko">한국어</string>
+    <string name="language_es">Español</string>
+    <string name="language_ja">日本語</string>
+
+    <!-- Tee Colors -->
+    <string name="tee_black">Black</string>
+    <string name="tee_blue">Blue</string>
+    <string name="tee_white">White</string>
+    <string name="tee_yellow">Yellow</string>
+    <string name="tee_red">Red</string>
+
+    <!-- SG Baselines -->
+    <string name="baseline_scratch">Scratch</string>
+    <string name="baseline_single">Single Digit</string>
+    <string name="baseline_bogey">Bogey Golfer</string>
+    <string name="baseline_high_cap">High Handicap</string>
+
+    <!-- Courses -->
+    <string name="courses_title">Courses</string>
+    <string name="courses_search_placeholder">Search courses to download</string>
+    <string name="courses_search">Search</string>
+    <string name="courses_no_courses">No courses downloaded yet</string>
+    <string name="courses_no_results">No courses found for \"%s\"</string>
+    <string name="courses_search_failed">Search failed: %s</string>
+    <string name="courses_download_failed">Download failed: %s</string>
+    <string name="courses_saved">Saved Courses (%d)</string>
+    <string name="courses_holes">%d holes</string>
+
+    <!-- My Clubs -->
+    <string name="clubs_title">My Clubs</string>
+    <string name="clubs_footer">Selected clubs appear in the Mark Shot picker during a round.</string>
+    <string name="clubs_reset">Reset to Default</string>
+
+    <!-- Club Names -->
+    <string name="club_unknown">Unknown</string>
+    <string name="club_driver">Driver</string>
+    <string name="club_md">Mini Driver</string>
+    <string name="club_3w">3 Wood</string>
+    <string name="club_5w">5 Wood</string>
+    <string name="club_7w">7 Wood</string>
+    <string name="club_9w">9 Wood</string>
+    <string name="club_3h">3 Hybrid</string>
+    <string name="club_4h">4 Hybrid</string>
+    <string name="club_5h">5 Hybrid</string>
+    <string name="club_4i">4 Iron</string>
+    <string name="club_5i">5 Iron</string>
+    <string name="club_6i">6 Iron</string>
+    <string name="club_7i">7 Iron</string>
+    <string name="club_8i">8 Iron</string>
+    <string name="club_9i">9 Iron</string>
+    <string name="club_pw">Pitching Wedge</string>
+    <string name="club_gw">Gap Wedge</string>
+    <string name="club_sw">Sand Wedge</string>
+    <string name="club_lw">Lob Wedge</string>
+    <string name="club_putter">Putter</string>
+
+    <!-- Round -->
+    <string name="round_title">Round</string>
+    <string name="round_no_active">No Active Round</string>
+    <string name="round_start">Start a Round</string>
+    <string name="round_start_description">Start a round to track distances\nand mark your shots</string>
+    <string name="round_hole">Hole %d</string>
+    <string name="round_par">Par %d</string>
+    <string name="round_hole_par_yards">Hole %1$d  Par %2$d  %3$d yds</string>
+    <string name="round_start_on_hole">Start on Hole %d</string>
+    <string name="round_which_hole">Which hole are you starting on?</string>
+    <string name="round_mark_shot">Mark Shot</string>
+    <string name="round_strokes">Strokes</string>
+    <string name="round_putts">Putts</string>
+    <string name="round_penalty">Penalty</string>
+    <string name="round_scorecard">SCORECARD</string>
+    <string name="round_total">Total</string>
+    <string name="round_tot">Tot</string>
+    <string name="round_plus_minus">+/−</string>
+    <string name="round_pen">Pen</string>
+    <string name="round_select_club">Select Club</string>
+    <string name="round_move_shots_to">Move Shots to Hole…</string>
+    <string name="round_sync_watch">Sync Watch</string>
+    <string name="round_end">End Round</string>
+    <string name="round_cancel">Cancel Round</string>
+    <string name="round_save_finish">Save and finish this round?</string>
+    <string name="round_finish">Finish</string>
+    <string name="round_next">Next</string>
+    <string name="round_prev">Prev</string>
+
+    <!-- Distance -->
+    <string name="distance_front">Front</string>
+    <string name="distance_flag">Flag</string>
+    <string name="distance_back">Back</string>
+    <string name="distance_yds">yds</string>
+
+    <!-- Scorecards -->
+    <string name="scorecards_title">Scorecards</string>
+    <string name="scorecards_rounds">Rounds</string>
+    <string name="scorecards_tournaments">Tournaments</string>
+    <string name="scorecards_no_scorecards">No Scorecards</string>
+    <string name="scorecards_no_scorecards_desc">Completed rounds will appear here</string>
+
+    <!-- Insights -->
+    <string name="insights_title">💡 Key Insights</string>
+    <string name="insights_vs_baseline">vs %s</string>
+
+    <!-- Common -->
+    <string name="common_done">Done</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_add">Add</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_save">Save</string>
+    <string name="common_back">Back</string>
+    <string name="common_clear">Clear</string>
 </resources>

@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.nicechester.gobirdie.AppLanguage
 import io.github.nicechester.gobirdie.Config
+import io.github.nicechester.gobirdie.LocaleHelper
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.api.GolfCourseApiClient
 import io.github.nicechester.gobirdie.core.model.ClubType
@@ -94,6 +96,10 @@ private fun SettingsMain(
         // Insights
         item { SectionHeader("Insights") }
         item { InsightsBaselineRow(prefs) }
+
+        // Language
+        item { SectionHeader("Language") }
+        item { LanguageRow() }
 
         // Desktop Sync
         item { SectionHeader("Desktop Sync") }
@@ -270,6 +276,49 @@ private fun InsightsBaselineRow(prefs: android.content.SharedPreferences) {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            },
+            confirmButton = {},
+        )
+    }
+}
+
+@Composable
+private fun LanguageRow() {
+    val context = LocalContext.current
+    var selected by remember { mutableStateOf(LocaleHelper.getSavedLanguage(context)) }
+    var showPicker by remember { mutableStateOf(false) }
+
+    SettingsRow(
+        icon = Icons.Default.Language,
+        label = "Language",
+        trailing = selected.displayName,
+    ) { showPicker = true }
+
+    if (showPicker) {
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = { Text("Language") },
+            text = {
+                Column {
+                    AppLanguage.entries.forEach { lang ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable {
+                                    selected = lang
+                                    LocaleHelper.setLanguage(context, lang)
+                                    showPicker = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(lang.displayName, style = MaterialTheme.typography.bodyLarge)
+                            Spacer(Modifier.weight(1f))
+                            if (lang == selected) {
+                                Icon(Icons.Default.Check, null, tint = GolfGreen)
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {},

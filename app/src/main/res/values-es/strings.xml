@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GoBirdie</string>
+
+    <!-- Tabs -->
+    <string name="tab_round">Ronda</string>
+    <string name="tab_scorecards">Tarjetas</string>
+    <string name="tab_settings">Ajustes</string>
+
+    <!-- Settings -->
+    <string name="settings_courses">Campos</string>
+    <string name="settings_manage_courses">Gestionar Campos</string>
+    <string name="settings_equipment">Equipamiento</string>
+    <string name="settings_my_clubs">Mis Palos</string>
+    <string name="settings_tee">Tee</string>
+    <string name="settings_tee_color">Color del Tee</string>
+    <string name="settings_insights">Análisis</string>
+    <string name="settings_sg_baseline">Referencia SG</string>
+    <string name="settings_sg_baseline_footer">Los análisis comparan tu ronda con esta referencia.</string>
+    <string name="settings_desktop_sync">Sincronización</string>
+    <string name="settings_sync_server">Servidor de Sincronización</string>
+    <string name="settings_sync_running">Ejecutando en puerto %d (solo WiFi)</string>
+    <string name="settings_sync_off">Apagado</string>
+    <string name="settings_support_development">Apoyar el Desarrollo</string>
+    <string name="settings_tip_message">GoBirdie es gratis y sin anuncios.</string>
+    <string name="settings_tip_cta">Si te gusta la app, ¡invítame a una bebida! 🍺</string>
+    <string name="settings_tip_footer">Las propinas ayudan a cubrir los costos de desarrollo y mantener la app gratuita.</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_version">Versión</string>
+    <string name="settings_manual">Manual</string>
+    <string name="settings_map_data">Datos del Mapa</string>
+    <string name="settings_maps">Mapas</string>
+    <string name="settings_license">Licencia</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_footer">Elige tu idioma preferido para la app.</string>
+
+    <!-- Languages -->
+    <string name="language_system">Predeterminado del Sistema</string>
+    <string name="language_en">English</string>
+    <string name="language_ko">한국어</string>
+    <string name="language_es">Español</string>
+    <string name="language_ja">日本語</string>
+
+    <!-- Tee Colors -->
+    <string name="tee_black">Negro</string>
+    <string name="tee_blue">Azul</string>
+    <string name="tee_white">Blanco</string>
+    <string name="tee_yellow">Amarillo</string>
+    <string name="tee_red">Rojo</string>
+
+    <!-- SG Baselines -->
+    <string name="baseline_scratch">Scratch</string>
+    <string name="baseline_single">Un Dígito</string>
+    <string name="baseline_bogey">Jugador Bogey</string>
+    <string name="baseline_high_cap">Handicap Alto</string>
+
+    <!-- Courses -->
+    <string name="courses_title">Campos</string>
+    <string name="courses_search_placeholder">Buscar campos para descargar</string>
+    <string name="courses_search">Buscar</string>
+    <string name="courses_no_courses">No hay campos descargados</string>
+    <string name="courses_no_results">No se encontraron campos para \"%s\"</string>
+    <string name="courses_search_failed">Búsqueda fallida: %s</string>
+    <string name="courses_download_failed">Descarga fallida: %s</string>
+    <string name="courses_saved">Campos Guardados (%d)</string>
+    <string name="courses_holes">%d hoyos</string>
+
+    <!-- My Clubs -->
+    <string name="clubs_title">Mis Palos</string>
+    <string name="clubs_footer">Los palos seleccionados aparecen en el selector de golpes durante una ronda.</string>
+    <string name="clubs_reset">Restablecer</string>
+
+    <!-- Club Names -->
+    <string name="club_unknown">Desconocido</string>
+    <string name="club_driver">Driver</string>
+    <string name="club_md">Mini Driver</string>
+    <string name="club_3w">Madera 3</string>
+    <string name="club_5w">Madera 5</string>
+    <string name="club_7w">Madera 7</string>
+    <string name="club_9w">Madera 9</string>
+    <string name="club_3h">Híbrido 3</string>
+    <string name="club_4h">Híbrido 4</string>
+    <string name="club_5h">Híbrido 5</string>
+    <string name="club_4i">Hierro 4</string>
+    <string name="club_5i">Hierro 5</string>
+    <string name="club_6i">Hierro 6</string>
+    <string name="club_7i">Hierro 7</string>
+    <string name="club_8i">Hierro 8</string>
+    <string name="club_9i">Hierro 9</string>
+    <string name="club_pw">Pitching Wedge</string>
+    <string name="club_gw">Gap Wedge</string>
+    <string name="club_sw">Sand Wedge</string>
+    <string name="club_lw">Lob Wedge</string>
+    <string name="club_putter">Putter</string>
+
+    <!-- Round -->
+    <string name="round_title">Ronda</string>
+    <string name="round_no_active">Sin Ronda Activa</string>
+    <string name="round_start">Iniciar Ronda</string>
+    <string name="round_start_description">Inicia una ronda para rastrear distancias\ny marcar tus golpes</string>
+    <string name="round_hole">Hoyo %d</string>
+    <string name="round_par">Par %d</string>
+    <string name="round_hole_par_yards">Hoyo %1$d  Par %2$d  %3$d yardas</string>
+    <string name="round_start_on_hole">Comenzar en Hoyo %d</string>
+    <string name="round_which_hole">¿En qué hoyo empiezas?</string>
+    <string name="round_mark_shot">Marcar Golpe</string>
+    <string name="round_strokes">Golpes</string>
+    <string name="round_putts">Putts</string>
+    <string name="round_penalty">Penalización</string>
+    <string name="round_scorecard">TARJETA</string>
+    <string name="round_total">Total</string>
+    <string name="round_tot">Tot</string>
+    <string name="round_plus_minus">+/−</string>
+    <string name="round_pen">Pen</string>
+    <string name="round_select_club">Seleccionar Palo</string>
+    <string name="round_move_shots_to">Mover Golpes al Hoyo…</string>
+    <string name="round_sync_watch">Sincronizar Reloj</string>
+    <string name="round_end">Terminar Ronda</string>
+    <string name="round_cancel">Cancelar Ronda</string>
+    <string name="round_save_finish">¿Guardar y terminar esta ronda?</string>
+    <string name="round_finish">Terminar</string>
+    <string name="round_next">Siguiente</string>
+    <string name="round_prev">Anterior</string>
+
+    <!-- Distance -->
+    <string name="distance_front">Frente</string>
+    <string name="distance_flag">Bandera</string>
+    <string name="distance_back">Fondo</string>
+    <string name="distance_yds">yardas</string>
+
+    <!-- Scorecards -->
+    <string name="scorecards_title">Tarjetas</string>
+    <string name="scorecards_rounds">Rondas</string>
+    <string name="scorecards_tournaments">Torneos</string>
+    <string name="scorecards_no_scorecards">Sin Tarjetas</string>
+    <string name="scorecards_no_scorecards_desc">Las rondas completadas aparecerán aquí</string>
+
+    <!-- Insights -->
+    <string name="insights_title">💡 Análisis Clave</string>
+    <string name="insights_vs_baseline">vs %s</string>
+
+    <!-- Common -->
+    <string name="common_done">Hecho</string>
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_confirm">Confirmar</string>
+    <string name="common_edit">Editar</string>
+    <string name="common_add">Añadir</string>
+    <string name="common_delete">Eliminar</string>
+    <string name="common_save">Guardar</string>
+    <string name="common_back">Atrás</string>
+    <string name="common_clear">Borrar</string>
+</resources>
