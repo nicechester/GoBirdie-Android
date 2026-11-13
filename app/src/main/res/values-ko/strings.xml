@@ -5,6 +5,7 @@
     <!-- Tabs -->
     <string name="tab_round">라운드</string>
     <string name="tab_scorecards">스코어카드</string>
+    <string name="tab_map">지도</string>
     <string name="tab_settings">설정</string>
 
     <!-- Settings -->
@@ -58,6 +59,7 @@
     <string name="courses_title">코스</string>
     <string name="courses_search_placeholder">다운로드할 코스 검색</string>
     <string name="courses_search">검색</string>
+    <string name="courses_search_results">검색 결과</string>
     <string name="courses_no_courses">다운로드한 코스가 없습니다</string>
     <string name="courses_no_results">\"%s\"에 대한 코스를 찾을 수 없습니다</string>
     <string name="courses_search_failed">검색 실패: %s</string>
@@ -149,4 +151,149 @@
     <string name="common_save">저장</string>
     <string name="common_back">뒤로</string>
     <string name="common_clear">지우기</string>
+    <string name="common_download">다운로드</string>
+
+    <!-- Shared -->
+    <string name="common_retry">재시도</string>
+    <string name="common_close">닫기</string>
+    <string name="common_name">이름</string>
+    <string name="common_unknown_error">알 수 없는 오류</string>
+    <string name="strokes_count">%d타</string>
+    <string name="putts_count">퍼트 %d회</string>
+
+    <!-- Round -->
+    <string name="round_resume_title">라운드를 이어서 하시겠습니까?</string>
+    <string name="round_resume_message">%s 에서 진행 중인 라운드가 있습니다. 중단한 곳부터 이어서 하시겠습니까?</string>
+    <string name="round_resume">이어하기</string>
+    <string name="round_discard">삭제</string>
+    <string name="round_still_playing">아직 플레이 중이신가요?</string>
+    <string name="round_still_playing_message">30분 동안 활동이 감지되지 않았습니다. 아직 플레이 중이신가요?</string>
+    <string name="round_yes_continue">네, 계속합니다</string>
+    <string name="round_start_button">라운드 시작</string>
+    <string name="round_hole_par">%1$d번 홀  (파 %2$d)</string>
+    <string name="round_move_shots_title">샷을 다른 홀로 이동</string>
+    <string name="round_end_confirm_title">라운드를 종료하시겠습니까?</string>
+    <string name="round_end_action">종료</string>
+    <string name="round_tournament_created">%s 토너먼트가 생성되었습니다</string>
+    <string name="shot_add_here">여기에 샷을 추가하시겠습니까?</string>
+    <string name="shot_delete_confirm">이 샷을 삭제하시겠습니까?</string>
+    <string name="shot_club">클럽</string>
+    <string name="shot_deselect">선택 해제</string>
+    <string name="shot_move">이동</string>
+    <string name="shot_reorder">순서 변경</string>
+    <string name="shot_reorder_title">샷 순서 변경</string>
+    <string name="shot_tap_select">샷을 탭하여 선택</string>
+    <string name="shot_tap_map_add">지도를 탭하여 샷 추가</string>
+    <string name="shot_tap_pin_select">핀을 탭하여 선택</string>
+
+    <!-- Start round -->
+    <string name="start_discover">주변 코스 찾기</string>
+    <string name="start_finding_location">현재 위치를 찾는 중...</string>
+    <string name="start_search_placeholder">이름으로 검색</string>
+    <string name="start_no_courses">코스를 찾을 수 없습니다</string>
+    <string name="start_downloading">%s 다운로드 중...</string>
+    <string name="distance_mi">%.1f마일</string>
+    <string name="distance_under_tenth_mi">0.1마일 미만</string>
+
+    <!-- Map -->
+    <string name="map_explore_title">코스 둘러보기</string>
+    <string name="map_explore_desc">라운드 기록 없이 코스 레이아웃 보기</string>
+    <string name="map_start_exploring">둘러보기 시작</string>
+    <string name="map_pick_another">다른 코스 선택</string>
+    <string name="hole_hcp">핸디캡 %s</string>
+
+    <!-- Scorecards -->
+    <string name="stat_holes_played">플레이한 홀</string>
+    <string name="scorecards_front9">전반 9홀</string>
+    <string name="scorecards_back9">후반 9홀</string>
+    <string name="scorecards_shot_map">샷 맵</string>
+    <string name="scorecards_hole_summary">파 %1$d  ·  %2$d타  ·  퍼트 %3$d회</string>
+
+    <!-- Share / scan -->
+    <string name="qr_title">점수 공유</string>
+    <string name="qr_content_desc">%s의 QR 코드</string>
+    <string name="qr_hint">토너먼트 주최자에게 이 코드를 스캔하도록 하세요</string>
+    <string name="scan_title">점수 스캔</string>
+    <string name="scan_camera_unavailable">카메라를 사용할 수 없습니다</string>
+    <string name="scan_hint">GoBirdie QR 코드에 카메라를 비추세요</string>
+    <string name="scan_permission_required">카메라 권한이 필요합니다</string>
+    <string name="scan_grant">권한 허용</string>
+    <string name="scan_error_unavailable">카메라를 사용할 수 없음: %s</string>
+    <string name="scan_error_start">카메라를 시작하지 못했습니다: %s</string>
+    <string name="scan_rescan">다시 스캔</string>
+
+    <!-- Players -->
+    <string name="player_add">플레이어 추가</string>
+    <string name="player_name_title">플레이어 이름</string>
+    <string name="player_name_label">플레이어 이름</string>
+    <string name="player_rename">플레이어 이름 변경</string>
+    <string name="player_scan_qr">QR 코드 스캔</string>
+
+    <!-- Tournaments -->
+    <string name="tournaments_empty">토너먼트가 없습니다</string>
+    <string name="tournaments_empty_desc">+를 눌러 새로 만드세요</string>
+    <string name="tournaments_rename">토너먼트 이름 변경</string>
+    <string name="tournament_live">진행 중</string>
+    <string name="tournament_no_players">아직 플레이어가 없습니다. +를 눌러 추가하세요.</string>
+    <string name="tournament_new">새 토너먼트</string>
+    <string name="tournament_create">만들기</string>
+    <string name="tournament_course">코스</string>
+    <string name="tournament_select_course">코스를 선택하세요…</string>
+    <string name="tournament_select_course_title">코스 선택</string>
+    <string name="tournament_date_label">날짜 (yyyy-MM-dd)</string>
+    <string name="tournament_title_label">제목 (선택)</string>
+    <string name="tournament_title_placeholder">예: 토요일 스크램블</string>
+    <string name="tournament_no_courses">저장된 코스가 없습니다. 먼저 코스를 다운로드하세요.</string>
+    <plurals name="tournament_players">
+        <item quantity="other">플레이어 %d명</item>
+    </plurals>
+
+    <!-- Round insights -->
+    <string name="insight_sg_putting_critical">퍼팅이 이번 라운드에서 가장 큰 약점이었습니다 — 그린에서 %s타를 잃었습니다. 긴 퍼트의 거리 조절을 개선하는 것이 가장 빠른 해결책입니다.</string>
+    <string name="insight_sg_approach_critical">아이언 어프로치가 가장 큰 약점이었습니다 — 그린으로 가는 샷에서 %s타를 잃었습니다. 거리 조절과 아이언 정확도를 보완해야 합니다.</string>
+    <string name="insight_sg_off_tee_critical">티샷에 큰 문제가 있었습니다 — 티잉 그라운드에서 %s타를 잃었습니다. 좁은 홀에서는 비거리보다 정확도를 우선해 보세요.</string>
+    <string name="insight_sg_short_game_critical">쇼트게임에서 %s타를 잃었습니다. 업앤다운 성공률을 높이는 것이 타수를 줄이는 가장 빠른 방법입니다.</string>
+    <string name="insight_sg_putting_strong">퍼팅이 아주 좋았습니다 — 그린에서 %s타를 줄였습니다. 거리 조절과 그린 읽기가 훌륭했습니다.</string>
+    <string name="insight_sg_approach_strong">볼 스트라이킹이 훌륭했습니다 — 어프로치 샷에서 %s타를 줄였습니다. 이런 아이언 샷은 버디 기회를 만듭니다.</string>
+    <string name="insight_sg_total_positive">기준 대비 전체적으로 %s타를 줄였습니다 — 정말 강력한 전반적인 플레이입니다.</string>
+    <string name="insight_fir_low_gir">페어웨이 적중률 %1$s%%, 그린 적중률은 %2$s%%에 그쳤습니다 — 드라이버로 좋은 위치를 만들었지만 아이언이 따라주지 않았습니다.</string>
+    <string name="insight_low_fir_high_gir">페어웨이 적중률은 %1$s%%지만 GIR은 %2$s%% — 인상적인 아이언 회복 능력입니다. 티샷을 다듬으면 더 위협적인 선수가 될 것입니다.</string>
+    <string name="insight_three_putts_critical">쓰리퍼트가 %s번 — 한 번마다 타수가 낭비됩니다. 첫 퍼트를 3피트 이내로 붙이면 피해를 막을 수 있습니다.</string>
+    <string name="insight_three_putts_warning">오늘 쓰리퍼트가 %s번 있었습니다. 먼 거리 퍼트의 거리 조절을 보완해야 합니다.</string>
+    <string name="insight_good_scrambling">GIR은 %1$s%%였지만 스크램블 %2$s%% 성공 — 쇼트게임이 여러 타를 지켜주어 스코어를 괜찮게 유지했습니다.</string>
+    <string name="insight_poor_scrambling">그린을 %1$s%% 놓쳤고 스크램블은 %2$s%%에 그쳤습니다 — 쇼트게임 때문에 라운드당 4~5타를 잃고 있습니다.</string>
+    <string name="insight_front_back_worse">전반 %1$s타, 후반 %2$s타 — 후반에 %3$s타가 늘었습니다. 체력이나 집중력이 후반에 떨어졌을 수 있습니다.</string>
+    <string name="insight_front_back_better">마무리가 좋았습니다 — 전반(%2$s타)에서 후반(%3$s타)으로 %1$s타를 줄였습니다.</string>
+    <string name="insight_par3_struggles">파3 홀 평균 +%s — 짧은 홀에서 티샷 아이언 정확도를 보완해야 합니다.</string>
+    <string name="insight_par5_scoring">파5 홀 평균 +%s — 득점 기회를 살리지 못했습니다. 더 나은 코스 매니지먼트로 버디를 노려보세요.</string>
+    <string name="insight_par5_birdie_machine">파5 홀이 주요 득점 홀이었습니다 — 오늘 평균 %s. 그곳에서의 장타와 코스 매니지먼트가 큰 강점입니다.</string>
+    <string name="insight_consecutive_bogeys">보기가 연속 %s개 — 나쁜 흐름은 한 번의 실수에서 커지는 경우가 많습니다. 홀 사이에 마음을 가다듬는 루틴이 중요합니다.</string>
+    <string name="insight_hr_late_round">전반에서 후반으로 심박수가 %s bpm 올랐습니다 — 후반 홀에서 피로나 긴장이 영향을 줬을 수 있습니다.</string>
+    <string name="insight_worst_club">%1$s이(가) 가장 약한 클럽이었습니다 — %3$s샷 평균 SG %2$s. 이 클럽을 집중 연습하면 효과가 있을 것입니다.</string>
+    <string name="insight_best_club">%1$s 감이 좋았습니다 — %3$s샷 평균 SG %2$s. 압박 속에서도 믿을 수 있는 클럽입니다.</string>
+    <string name="insight_driver_inconsistent">드라이버 비거리가 들쭉날쭉했습니다 (±%s야드) — 최대 비거리보다 중심 맞추기에 집중하면 일관성이 좋아집니다.</string>
+    <string name="insight_one_putts_high">오늘 원퍼트가 %s번 — 가까운 거리에서 꾸준히 홀아웃했습니다. 큰 득점 자산입니다.</string>
+    <string name="insight_zero_three_putts">쓰리퍼트가 없었습니다 — 거리 조절이 훌륭했습니다. 그린 읽기와 속도 판단이 뛰어났습니다.</string>
+    <string name="insight_longest_drive">가장 긴 드라이브: %s야드 — 티잉 그라운드에서 훌륭한 파워입니다.</string>
+    <string name="insight_driver_down_vs_history">드라이버 평균 비거리가 최근 평균보다 약 %s야드 짧았습니다. 피로나 스윙 변화가 파워에 영향을 주었는지 확인해 보세요.</string>
+    <string name="insight_driver_up_vs_history">드라이버 평균 비거리가 최근 평균보다 약 %s야드 길었습니다 — 오늘 스윙이 좋았습니다.</string>
+    <string name="insight_approach_worse_vs_history">어프로치 샷이 최근 평균보다 핀에서 약 %s야드 더 멀었습니다 — 오늘 아이언이 평소만큼 날카롭지 않았습니다.</string>
+    <string name="insight_approach_better_vs_history">어프로치 샷이 최근 평균보다 핀에 약 %s야드 더 가까웠습니다 — 오늘 아이언 감각이 좋았습니다.</string>
+    <string name="insight_round_duration_long">라운드가 %s분 걸렸습니다 — 4시간이 넘는 정신적 피로는 후반 9홀의 판단에 영향을 줄 수 있습니다.</string>
+
+    <!-- Accessibility labels -->
+    <string name="a11y_menu">메뉴</string>
+    <string name="a11y_undo">실행 취소</string>
+    <string name="a11y_minus">감소</string>
+    <string name="a11y_plus">증가</string>
+    <string name="common_saved">저장됨</string>
+    <string name="a11y_previous">이전</string>
+    <string name="a11y_next">다음</string>
+    <string name="map_edit_shots_title">%1$d번 홀 · 샷 편집</string>
+    <string name="a11y_move_up">위로 이동</string>
+    <string name="a11y_move_down">아래로 이동</string>
+    <string name="scorecards_start_tournament">토너먼트 시작</string>
+    <string name="common_hole">홀</string>
+    <string name="common_par">파</string>
+    <string name="start_search_failed">주변 코스를 검색하지 못했습니다. 저장된 코스는 계속 사용할 수 있습니다.</string>
 </resources>

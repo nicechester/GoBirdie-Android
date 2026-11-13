@@ -15,12 +15,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.ui.tournaments.TournamentsViewModel
 import kotlinx.coroutines.launch
 
@@ -53,16 +55,16 @@ fun RoundScreen(appState: AppState) {
     if (pendingResume != null) {
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Resume Round?") },
-            text = { Text("You have an unfinished round at ${pendingResume!!.round.courseName}. Resume where you left off?") },
+            title = { Text(stringResource(R.string.round_resume_title)) },
+            text = { Text(stringResource(R.string.round_resume_message, pendingResume!!.round.courseName)) },
             confirmButton = {
                 TextButton(onClick = { appState.resumeRound() }) {
-                    Text("Resume")
+                    Text(stringResource(R.string.round_resume))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { appState.discardInProgressRound() }) {
-                    Text("Discard", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.round_discard), color = MaterialTheme.colorScheme.error)
                 }
             },
         )
@@ -72,16 +74,16 @@ fun RoundScreen(appState: AppState) {
     if (showIdlePrompt) {
         AlertDialog(
             onDismissRequest = { appState.dismissIdlePrompt() },
-            title = { Text("Still Playing?") },
-            text = { Text("No activity detected for 30 minutes. Are you still playing?") },
+            title = { Text(stringResource(R.string.round_still_playing)) },
+            text = { Text(stringResource(R.string.round_still_playing_message)) },
             confirmButton = {
                 TextButton(onClick = { appState.dismissIdlePrompt() }) {
-                    Text("Yes, Continue")
+                    Text(stringResource(R.string.round_yes_continue))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { appState.endActiveRound() }) {
-                    Text("End Round", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.round_end), color = MaterialTheme.colorScheme.error)
                 }
             },
         )
@@ -123,7 +125,8 @@ fun RoundScreen(appState: AppState) {
                         val r = session!!.round.value
                         val t = tournamentsVm.createTournament(r.courseId, r.courseName, tournamentsVm.todayDate(), null, seedRound = r)
                         tournamentsVm.save(t)
-                        scope.launch { snackbarHostState.showSnackbar("Tournament created for ${r.courseName}") }
+                        val createdMsg = context.getString(R.string.round_tournament_created, r.courseName)
+                        scope.launch { snackbarHostState.showSnackbar(createdMsg) }
                     }} else null,
                 )
             }
@@ -163,10 +166,10 @@ fun RoundScreen(appState: AppState) {
         ) {
             Icon(Icons.Default.Flag, null, Modifier.size(64.dp), tint = Color(0xFF2E7D32))
             Spacer(Modifier.height(16.dp))
-            Text("No Active Round", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.round_no_active), style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(8.dp))
             Text(
-                "Start a round to track distances\nand mark your shots",
+                stringResource(R.string.round_start_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -191,7 +194,7 @@ fun RoundScreen(appState: AppState) {
             ) {
                 Icon(Icons.Default.Add, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Start Round")
+                Text(stringResource(R.string.round_start_button))
             }
         }
     }

@@ -5,6 +5,7 @@
     <!-- Tabs -->
     <string name="tab_round">ラウンド</string>
     <string name="tab_scorecards">スコアカード</string>
+    <string name="tab_map">マップ</string>
     <string name="tab_settings">設定</string>
 
     <!-- Settings -->
@@ -58,6 +59,7 @@
     <string name="courses_title">コース</string>
     <string name="courses_search_placeholder">ダウンロードするコースを検索</string>
     <string name="courses_search">検索</string>
+    <string name="courses_search_results">検索結果</string>
     <string name="courses_no_courses">ダウンロードしたコースがありません</string>
     <string name="courses_no_results">「%s」のコースが見つかりません</string>
     <string name="courses_search_failed">検索失敗: %s</string>
@@ -149,4 +151,149 @@
     <string name="common_save">保存</string>
     <string name="common_back">戻る</string>
     <string name="common_clear">クリア</string>
+    <string name="common_download">ダウンロード</string>
+
+    <!-- Shared -->
+    <string name="common_retry">再試行</string>
+    <string name="common_close">閉じる</string>
+    <string name="common_name">名前</string>
+    <string name="common_unknown_error">不明なエラー</string>
+    <string name="strokes_count">%d打</string>
+    <string name="putts_count">%dパット</string>
+
+    <!-- Round -->
+    <string name="round_resume_title">ラウンドを再開しますか？</string>
+    <string name="round_resume_message">%s の未完了のラウンドがあります。中断した場所から再開しますか？</string>
+    <string name="round_resume">再開</string>
+    <string name="round_discard">破棄</string>
+    <string name="round_still_playing">まだプレー中ですか？</string>
+    <string name="round_still_playing_message">30分間アクティビティが検出されませんでした。まだプレー中ですか？</string>
+    <string name="round_yes_continue">はい、続ける</string>
+    <string name="round_start_button">ラウンド開始</string>
+    <string name="round_hole_par">%1$d番ホール  (パー%2$d)</string>
+    <string name="round_move_shots_title">ショットを別のホールへ移動</string>
+    <string name="round_end_confirm_title">ラウンドを終了しますか？</string>
+    <string name="round_end_action">終了</string>
+    <string name="round_tournament_created">%s のトーナメントを作成しました</string>
+    <string name="shot_add_here">ここにショットを追加しますか？</string>
+    <string name="shot_delete_confirm">このショットを削除しますか？</string>
+    <string name="shot_club">クラブ</string>
+    <string name="shot_deselect">選択解除</string>
+    <string name="shot_move">移動</string>
+    <string name="shot_reorder">並べ替え</string>
+    <string name="shot_reorder_title">ショットの並べ替え</string>
+    <string name="shot_tap_select">ショットをタップして選択</string>
+    <string name="shot_tap_map_add">地図をタップしてショットを追加</string>
+    <string name="shot_tap_pin_select">ピンをタップして選択</string>
+
+    <!-- Start round -->
+    <string name="start_discover">近くのコースを探す</string>
+    <string name="start_finding_location">現在地を検索中...</string>
+    <string name="start_search_placeholder">名前で検索</string>
+    <string name="start_no_courses">コースが見つかりません</string>
+    <string name="start_downloading">%s をダウンロード中...</string>
+    <string name="distance_mi">%.1fマイル</string>
+    <string name="distance_under_tenth_mi">0.1マイル未満</string>
+
+    <!-- Map -->
+    <string name="map_explore_title">コースを探索</string>
+    <string name="map_explore_desc">ラウンドを記録せずにコースレイアウトを表示</string>
+    <string name="map_start_exploring">探索を開始</string>
+    <string name="map_pick_another">別のコースを選択</string>
+    <string name="hole_hcp">HCP %s</string>
+
+    <!-- Scorecards -->
+    <string name="stat_holes_played">プレーしたホール</string>
+    <string name="scorecards_front9">前半9ホール</string>
+    <string name="scorecards_back9">後半9ホール</string>
+    <string name="scorecards_shot_map">ショットマップ</string>
+    <string name="scorecards_hole_summary">パー%1$d  ·  %2$d打  ·  %3$dパット</string>
+
+    <!-- Share / scan -->
+    <string name="qr_title">スコアを共有</string>
+    <string name="qr_content_desc">%s のQRコード</string>
+    <string name="qr_hint">トーナメント主催者にこのコードをスキャンしてもらってください</string>
+    <string name="scan_title">スコアをスキャン</string>
+    <string name="scan_camera_unavailable">カメラが利用できません</string>
+    <string name="scan_hint">GoBirdieのQRコードにカメラを向けてください</string>
+    <string name="scan_permission_required">カメラの許可が必要です</string>
+    <string name="scan_grant">許可する</string>
+    <string name="scan_error_unavailable">カメラが利用できません: %s</string>
+    <string name="scan_error_start">カメラの起動に失敗しました: %s</string>
+    <string name="scan_rescan">再スキャン</string>
+
+    <!-- Players -->
+    <string name="player_add">プレイヤーを追加</string>
+    <string name="player_name_title">プレイヤー名</string>
+    <string name="player_name_label">プレイヤー名</string>
+    <string name="player_rename">プレイヤー名を変更</string>
+    <string name="player_scan_qr">QRコードをスキャン</string>
+
+    <!-- Tournaments -->
+    <string name="tournaments_empty">トーナメントはありません</string>
+    <string name="tournaments_empty_desc">+をタップして作成</string>
+    <string name="tournaments_rename">トーナメント名を変更</string>
+    <string name="tournament_live">ライブ</string>
+    <string name="tournament_no_players">まだプレイヤーがいません。+をタップして追加してください。</string>
+    <string name="tournament_new">新規トーナメント</string>
+    <string name="tournament_create">作成</string>
+    <string name="tournament_course">コース</string>
+    <string name="tournament_select_course">コースを選択…</string>
+    <string name="tournament_select_course_title">コースを選択</string>
+    <string name="tournament_date_label">日付 (yyyy-MM-dd)</string>
+    <string name="tournament_title_label">タイトル（任意）</string>
+    <string name="tournament_title_placeholder">例: 土曜日のスクランブル</string>
+    <string name="tournament_no_courses">保存されたコースがありません。先にコースをダウンロードしてください。</string>
+    <plurals name="tournament_players">
+        <item quantity="other">%d人</item>
+    </plurals>
+
+    <!-- Round insights -->
+    <string name="insight_sg_putting_critical">パッティングが今回のスコアで最大の弱点でした — グリーン上で%s打を失いました。長いパットの距離感を改善するのが最も早い解決策です。</string>
+    <string name="insight_sg_approach_critical">アプローチが最大の弱点でした — グリーンへのショットで%s打を失いました。距離感とアイアンの精度を改善する必要があります。</string>
+    <string name="insight_sg_off_tee_critical">ティーショットに大きな問題がありました — ティーから%s打を失いました。狭いホールでは飛距離より精度を優先しましょう。</string>
+    <string name="insight_sg_short_game_critical">ショートゲームで%s打を失いました。アプローチとパットで寄せワンを安定させることが、スコアを縮める最速の方法です。</string>
+    <string name="insight_sg_putting_strong">パッティングが絶好調でした — グリーンで%s打を稼ぎました。距離感とライン読みが素晴らしかったです。</string>
+    <string name="insight_sg_approach_strong">ボールストライキングが素晴らしかったです — アプローチで%s打を稼ぎました。このアイアンショットはバーディチャンスを生みます。</string>
+    <string name="insight_sg_total_positive">基準と比べて全体で%s打を稼ぎました — 本当に素晴らしいオールラウンドなプレーです。</string>
+    <string name="insight_fir_low_gir">フェアウェイキープは%1$s%%でしたが、グリーンオンは%2$s%%にとどまりました — ドライバーで良い位置には運べていますが、アイアンが結果につながっていません。</string>
+    <string name="insight_low_fir_high_gir">フェアウェイキープは%1$s%%ですが、GIRは%2$s%% — 素晴らしいアイアンのリカバリー力です。ティーショットを整えれば、さらに手強いプレーヤーになれます。</string>
+    <string name="insight_three_putts_critical">3パットが%s回 — 1回ごとに打数が無駄になっています。最初のパットを3フィート以内に寄せれば被害を防げます。</string>
+    <string name="insight_three_putts_warning">今日の3パットは%s回でした。遠距離からのパットの距離感を見直す必要があります。</string>
+    <string name="insight_good_scrambling">GIRは%1$s%%でしたが、スクランブルは%2$s%%成功 — ショートゲームが何打も救い、スコアを立て直しました。</string>
+    <string name="insight_poor_scrambling">グリーンを%1$s%%外し、スクランブルは%2$s%%にとどまりました — ショートゲームでラウンドあたり4〜5打を失っています。</string>
+    <string name="insight_front_back_worse">前半%1$s、後半%2$s — 後半に%3$s打落ちています。疲労や集中力の低下が後半に出た可能性があります。</string>
+    <string name="insight_front_back_better">後半の追い上げが見事でした — 前半(%2$s)から後半(%3$s)へ%1$s打良くなりました。</string>
+    <string name="insight_par3_struggles">パー3の平均が+%s — 短いホールでのティーショットのアイアン精度を見直しましょう。</string>
+    <string name="insight_par5_scoring">パー5の平均が+%s — スコアを稼げるホールを活かせていません。より良いコースマネジメントでバーディを狙えます。</string>
+    <string name="insight_par5_birdie_machine">パー5はあなたの得点源です — 今日の平均は%s。そこでの飛距離とコースマネジメントは大きな強みです。</string>
+    <string name="insight_consecutive_bogeys">ボギーが%s連続 — 悪い流れは一つのミスから膨らむことが多いです。ホールの合間にリセットするルーティンが鍵です。</string>
+    <string name="insight_hr_late_round">心拍数が前半から後半で%s bpm上昇しました — 後半のホールで疲労や緊張が影響した可能性があります。</string>
+    <string name="insight_worst_club">%1$sが最も苦手なクラブでした — %3$sショットの平均SGは%2$s。このクラブを重点的に練習すると効果的です。</string>
+    <string name="insight_best_club">%1$sは非常に良い状態でした — %3$sショットの平均SGは%2$s。プレッシャーの中でも信頼できるクラブです。</string>
+    <string name="insight_driver_inconsistent">ドライバーの飛距離にばらつきがありました（±%sヤード）— 最大飛距離より芯で捉えることを意識すると安定します。</string>
+    <string name="insight_one_putts_high">今日のワンパットは%s回 — 近距離でのパットを安定して沈めました。大きな得点源です。</string>
+    <string name="insight_zero_three_putts">3パットはゼロでした — 距離感が素晴らしかったです。グリーン読みとペースの判断も的確でした。</string>
+    <string name="insight_longest_drive">最長ドライブ: %sヤード — ティーショットでの素晴らしいパワーです。</string>
+    <string name="insight_driver_down_vs_history">ドライバーの平均飛距離は最近の平均より約%sヤード短くなりました。疲労やスイングの変化がパワーに影響していないか確認しましょう。</string>
+    <string name="insight_driver_up_vs_history">ドライバーの平均飛距離は最近の平均より約%sヤード伸びました — 今日はスイングが好調でした。</string>
+    <string name="insight_approach_worse_vs_history">アプローチの平均距離はピンから最近の平均より約%sヤード遠くなりました — 今日はアイアンの切れが今ひとつでした。</string>
+    <string name="insight_approach_better_vs_history">アプローチの平均距離はピンに最近の平均より約%sヤード近づきました — 今日はアイアンの調子が良かったです。</string>
+    <string name="insight_round_duration_long">ラウンドは%s分かかりました — 4時間を超える精神的な疲労は、後半9ホールの判断に影響する可能性があります。</string>
+
+    <!-- Accessibility labels -->
+    <string name="a11y_menu">メニュー</string>
+    <string name="a11y_undo">元に戻す</string>
+    <string name="a11y_minus">減らす</string>
+    <string name="a11y_plus">増やす</string>
+    <string name="common_saved">保存済み</string>
+    <string name="a11y_previous">前へ</string>
+    <string name="a11y_next">次へ</string>
+    <string name="map_edit_shots_title">%1$d番ホール · ショット編集</string>
+    <string name="a11y_move_up">上へ移動</string>
+    <string name="a11y_move_down">下へ移動</string>
+    <string name="scorecards_start_tournament">トーナメント開始</string>
+    <string name="common_hole">ホール</string>
+    <string name="common_par">パー</string>
+    <string name="start_search_failed">近くのコースを検索できませんでした。保存済みのコースは引き続き利用できます。</string>
 </resources>

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.*
 import io.github.nicechester.gobirdie.core.model.teeToPinBearing
@@ -101,10 +103,10 @@ private fun ExploreEntryView(onExplore: () -> Unit) {
     ) {
         Icon(Icons.Default.Map, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(16.dp))
-        Text("Explore Courses", style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.map_explore_title), style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(8.dp))
         Text(
-            "View course layouts without tracking a round",
+            stringResource(R.string.map_explore_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -114,7 +116,7 @@ private fun ExploreEntryView(onExplore: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = GolfGreen),
             modifier = Modifier.fillMaxWidth().height(48.dp),
         ) {
-            Text("Start Exploring")
+            Text(stringResource(R.string.map_start_exploring))
         }
     }
 }
@@ -146,7 +148,7 @@ private fun ExploreCoursePicker(
             appState.locationService.stop()
             onCancel()
         },
-        title = "Explore Courses",
+        title = stringResource(R.string.map_explore_title),
     )
 }
 
@@ -184,7 +186,7 @@ private fun ExploreMapView(course: Course, appState: AppState, onBack: () -> Uni
         ) {
             Icon(Icons.Default.Close, null, Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
-            Text("Pick Another Course")
+            Text(stringResource(R.string.map_pick_another))
         }
     }
 }
@@ -263,26 +265,26 @@ private fun HoleInfoBar(
         ) {
             IconButton(onClick = onPrev, enabled = !isFirst) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack, "Previous",
+                    Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.a11y_previous),
                     tint = if (isFirst) Color.Gray else Color.White,
                 )
             }
             Spacer(Modifier.weight(1f))
             if (hole != null) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Hole ${hole.number}", color = Color.White, fontWeight = FontWeight.Bold)
-                    val info = buildString {
-                        append("Par ${hole.par}")
-                        hole.yardage?.let { append("  ·  $it yd") }
-                        hole.handicap?.let { append("  ·  HCP $it") }
-                    }
+                    Text(stringResource(R.string.round_hole, hole.number), color = Color.White, fontWeight = FontWeight.Bold)
+                    val info = listOfNotNull(
+                        stringResource(R.string.round_par, hole.par),
+                        hole.yardage?.let { "$it ${stringResource(R.string.distance_yds)}" },
+                        hole.handicap?.let { stringResource(R.string.hole_hcp, it) },
+                    ).joinToString("  ·  ")
                     Text(info, color = Color.White.copy(alpha = 0.85f), fontSize = 16.sp)
                 }
             }
             Spacer(Modifier.weight(1f))
             IconButton(onClick = onNext, enabled = !isLast) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward, "Next",
+                    Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.a11y_next),
                     tint = if (isLast) Color.Gray else Color.White,
                 )
             }
@@ -326,7 +328,7 @@ private fun ActiveRoundShotEditor(
     if (pendingTapPoint != null) {
         AlertDialog(
             onDismissRequest = { pendingTapPoint = null },
-            title = { Text("Add Shot Here?") },
+            title = { Text(stringResource(R.string.shot_add_here)) },
             confirmButton = {
                 TextButton(onClick = {
                     val gps = pendingTapPoint ?: return@TextButton
@@ -342,25 +344,25 @@ private fun ActiveRoundShotEditor(
                         clubPickerShotId = newShot.id
                         showClubPicker = true
                     }
-                }) { Text("Add", color = GolfGreen, fontWeight = FontWeight.Bold) }
+                }) { Text(stringResource(R.string.common_add), color = GolfGreen, fontWeight = FontWeight.Bold) }
             },
-            dismissButton = { TextButton(onClick = { pendingTapPoint = null }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { pendingTapPoint = null }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete this shot?") },
+            title = { Text(stringResource(R.string.shot_delete_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
                     val sid = selectedShotId ?: return@TextButton
                     session.deleteShot(holeScore.number, sid)
                     selectedShotId = null
-                }) { Text("Delete", color = Color.Red) }
+                }) { Text(stringResource(R.string.common_delete), color = Color.Red) }
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 
@@ -411,7 +413,7 @@ private fun ActiveRoundShotEditor(
                 Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Hole ${courseHole.number} · Edit Shots", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                Text(stringResource(R.string.map_edit_shots_title, courseHole.number), color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
             }
         }
 
@@ -430,7 +432,7 @@ private fun ActiveRoundShotEditor(
                         ) {
                             Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Club", fontSize = 12.sp)
+                            Text(stringResource(R.string.shot_club), fontSize = 12.sp)
                         }
                         TextButton(
                             onClick = { showDeleteConfirm = true },
@@ -438,13 +440,13 @@ private fun ActiveRoundShotEditor(
                         ) {
                             Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Delete", fontSize = 12.sp)
+                            Text(stringResource(R.string.common_delete), fontSize = 12.sp)
                         }
                         TextButton(
                             onClick = { selectedShotId = null },
                             colors = ButtonDefaults.textButtonColors(contentColor = Color.Gray),
                         ) {
-                            Text("Deselect", fontSize = 12.sp)
+                            Text(stringResource(R.string.shot_deselect), fontSize = 12.sp)
                         }
                     }
                 }
@@ -457,7 +459,7 @@ private fun ActiveRoundShotEditor(
                 ) {
                     Icon(Icons.Default.Close, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Done")
+                    Text(stringResource(R.string.common_done))
                 }
             }
         }

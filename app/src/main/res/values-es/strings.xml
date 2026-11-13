@@ -5,6 +5,7 @@
     <!-- Tabs -->
     <string name="tab_round">Ronda</string>
     <string name="tab_scorecards">Tarjetas</string>
+    <string name="tab_map">Mapa</string>
     <string name="tab_settings">Ajustes</string>
 
     <!-- Settings -->
@@ -58,6 +59,7 @@
     <string name="courses_title">Campos</string>
     <string name="courses_search_placeholder">Buscar campos para descargar</string>
     <string name="courses_search">Buscar</string>
+    <string name="courses_search_results">Resultados</string>
     <string name="courses_no_courses">No hay campos descargados</string>
     <string name="courses_no_results">No se encontraron campos para \"%s\"</string>
     <string name="courses_search_failed">Búsqueda fallida: %s</string>
@@ -149,4 +151,150 @@
     <string name="common_save">Guardar</string>
     <string name="common_back">Atrás</string>
     <string name="common_clear">Borrar</string>
+    <string name="common_download">Descargar</string>
+
+    <!-- Shared -->
+    <string name="common_retry">Reintentar</string>
+    <string name="common_close">Cerrar</string>
+    <string name="common_name">Nombre</string>
+    <string name="common_unknown_error">Error desconocido</string>
+    <string name="strokes_count">%d golpes</string>
+    <string name="putts_count">%d putts</string>
+
+    <!-- Round -->
+    <string name="round_resume_title">¿Reanudar la ronda?</string>
+    <string name="round_resume_message">Tienes una ronda sin terminar en %s. ¿Quieres reanudarla donde la dejaste?</string>
+    <string name="round_resume">Reanudar</string>
+    <string name="round_discard">Descartar</string>
+    <string name="round_still_playing">¿Sigues jugando?</string>
+    <string name="round_still_playing_message">No se detectó actividad durante 30 minutos. ¿Sigues jugando?</string>
+    <string name="round_yes_continue">Sí, continuar</string>
+    <string name="round_start_button">Iniciar Ronda</string>
+    <string name="round_hole_par">Hoyo %1$d  (Par %2$d)</string>
+    <string name="round_move_shots_title">Mover Golpes al Hoyo</string>
+    <string name="round_end_confirm_title">¿Terminar la ronda?</string>
+    <string name="round_end_action">Terminar</string>
+    <string name="round_tournament_created">Torneo creado para %s</string>
+    <string name="shot_add_here">¿Añadir golpe aquí?</string>
+    <string name="shot_delete_confirm">¿Eliminar este golpe?</string>
+    <string name="shot_club">Palo</string>
+    <string name="shot_deselect">Deseleccionar</string>
+    <string name="shot_move">Mover</string>
+    <string name="shot_reorder">Reordenar</string>
+    <string name="shot_reorder_title">Reordenar Golpes</string>
+    <string name="shot_tap_select">Toca un golpe para seleccionarlo</string>
+    <string name="shot_tap_map_add">Toca el mapa para añadir un golpe</string>
+    <string name="shot_tap_pin_select">Toca el banderín para seleccionar</string>
+
+    <!-- Start round -->
+    <string name="start_discover">Descubre campos cercanos</string>
+    <string name="start_finding_location">Buscando tu ubicación...</string>
+    <string name="start_search_placeholder">Buscar por nombre</string>
+    <string name="start_no_courses">No se encontraron campos</string>
+    <string name="start_downloading">Descargando %s...</string>
+    <string name="distance_mi">%.1f mi</string>
+    <string name="distance_under_tenth_mi">&lt; 0.1 mi</string>
+
+    <!-- Map -->
+    <string name="map_explore_title">Explorar Campos</string>
+    <string name="map_explore_desc">Ver el diseño de los campos sin registrar una ronda</string>
+    <string name="map_start_exploring">Empezar a explorar</string>
+    <string name="map_pick_another">Elegir otro campo</string>
+    <string name="hole_hcp">HCP %s</string>
+
+    <!-- Scorecards -->
+    <string name="stat_holes_played">Hoyos jugados</string>
+    <string name="scorecards_front9">Ida (9)</string>
+    <string name="scorecards_back9">Vuelta (9)</string>
+    <string name="scorecards_shot_map">Mapa de golpes</string>
+    <string name="scorecards_hole_summary">Par %1$d  ·  %2$d golpes  ·  %3$d putts</string>
+
+    <!-- Share / scan -->
+    <string name="qr_title">Compartir Resultado</string>
+    <string name="qr_content_desc">Código QR de %s</string>
+    <string name="qr_hint">Pide al organizador del torneo que escanee este código</string>
+    <string name="scan_title">Escanear Resultado</string>
+    <string name="scan_camera_unavailable">Cámara no disponible</string>
+    <string name="scan_hint">Apunta la cámara a un código QR de GoBirdie</string>
+    <string name="scan_permission_required">Se requiere permiso de cámara</string>
+    <string name="scan_grant">Conceder permiso</string>
+    <string name="scan_error_unavailable">Cámara no disponible: %s</string>
+    <string name="scan_error_start">No se pudo iniciar la cámara: %s</string>
+    <string name="scan_rescan">Escanear de nuevo</string>
+
+    <!-- Players -->
+    <string name="player_add">Añadir Jugador</string>
+    <string name="player_name_title">Nombre del Jugador</string>
+    <string name="player_name_label">Nombre del jugador</string>
+    <string name="player_rename">Renombrar Jugador</string>
+    <string name="player_scan_qr">Escanear código QR</string>
+
+    <!-- Tournaments -->
+    <string name="tournaments_empty">No hay torneos</string>
+    <string name="tournaments_empty_desc">Toca + para crear uno</string>
+    <string name="tournaments_rename">Renombrar Torneo</string>
+    <string name="tournament_live">En vivo</string>
+    <string name="tournament_no_players">Aún no hay jugadores. Toca + para añadir.</string>
+    <string name="tournament_new">Nuevo Torneo</string>
+    <string name="tournament_create">Crear</string>
+    <string name="tournament_course">Campo</string>
+    <string name="tournament_select_course">Selecciona un campo…</string>
+    <string name="tournament_select_course_title">Seleccionar Campo</string>
+    <string name="tournament_date_label">Fecha (aaaa-MM-dd)</string>
+    <string name="tournament_title_label">Título (opcional)</string>
+    <string name="tournament_title_placeholder">p. ej., Scramble del sábado</string>
+    <string name="tournament_no_courses">No hay campos guardados. Descarga un campo primero.</string>
+    <plurals name="tournament_players">
+        <item quantity="one">%d jugador</item>
+        <item quantity="other">%d jugadores</item>
+    </plurals>
+
+    <!-- Round insights -->
+    <string name="insight_sg_putting_critical">El putt fue el mayor problema de tu tarjeta: perdiste %s golpes en los greens. Controlar la velocidad en putts largos es la solución más rápida.</string>
+    <string name="insight_sg_approach_critical">El juego de approach fue tu talón de Aquiles: %s golpes perdidos hasta el green. Hay que mejorar el control de distancia y la precisión con hierros.</string>
+    <string name="insight_sg_off_tee_critical">Los tiros de salida fueron un problema importante: %s golpes perdidos desde el tee. Considera sacrificar distancia por precisión en hoyos estrechos.</string>
+    <string name="insight_sg_short_game_critical">Tu juego corto te costó %s golpes. Hacer up-and-down de forma más constante es la forma más rápida de bajar tu score.</string>
+    <string name="insight_sg_putting_strong">El putter estuvo espectacular: %s golpes ganados en los greens. Tu control de ritmo y lectura de greens fueron excelentes.</string>
+    <string name="insight_sg_approach_strong">El golpeo de bola fue excelente: %s golpes ganados en approach. Ese nivel con hierros genera oportunidades de birdie.</string>
+    <string name="insight_sg_total_positive">En general ganaste %s golpes frente a tu referencia: un rendimiento global realmente sólido.</string>
+    <string name="insight_fir_low_gir">Acertaste el %1$s%% de calles, pero solo el %2$s%% de greens: tu salida prepara buenas posiciones, pero los hierros no las convierten.</string>
+    <string name="insight_low_fir_high_gir">Solo el %1$s%% de calles, pero %2$s%% GIR: una recuperación impresionante con hierros. Mejorar los tiros de salida te haría aún más peligroso.</string>
+    <string name="insight_three_putts_critical">%s tres-putts: cada uno es un golpe desperdiciado. Dejar el primer putt a menos de 3 pies elimina el daño.</string>
+    <string name="insight_three_putts_warning">Hoy %s tres-putts. Hay que trabajar el control de distancia en putts largos.</string>
+    <string name="insight_good_scrambling">Solo %1$s%% GIR, pero recuperaste el %2$s%% — tu juego corto te ahorró varios golpes y mantuvo un score respetable.</string>
+    <string name="insight_poor_scrambling">Fallaste el %1$s%% de greens y solo recuperaste el %2$s%% — el juego corto te cuesta de 4 a 5 golpes por ronda.</string>
+    <string name="insight_front_back_worse">Ida %1$s, vuelta %2$s: una caída de %3$s golpes. Puede que el cansancio o la concentración hayan bajado al final.</string>
+    <string name="insight_front_back_better">Gran final: mejoraste %1$s golpes de la ida (%2$s) a la vuelta (%3$s).</string>
+    <string name="insight_par3_struggles">Los par 3 promediaron +%s sobre par: la precisión de hierro desde el tee necesita atención en los hoyos cortos.</string>
+    <string name="insight_par5_scoring">Los par 5 promediaron +%s: no aprovechas los hoyos para anotar. Una mejor gestión del campo podría darte birdies.</string>
+    <string name="insight_par5_birdie_machine">Los par 5 son tus hoyos para anotar: promedio %s hoy. Tu potencia y gestión del campo allí son una verdadera fortaleza.</string>
+    <string name="insight_consecutive_bogeys">%s bogeys seguidos: las malas rachas suelen crecer a partir de un mal golpe. Una rutina de reinicio entre hoyos es clave.</string>
+    <string name="insight_hr_late_round">La FC subió %s lpm de la ida a la vuelta: el cansancio o la presión pudieron influir en los últimos hoyos.</string>
+    <string name="insight_worst_club">Tu %1$s fue tu palo más débil: SG medio %2$s en %3$s golpes. Practicar específicamente con este palo daría buenos resultados.</string>
+    <string name="insight_best_club">Tu %1$s estuvo en su punto: SG medio %2$s en %3$s golpes. Es un palo en el que puedes confiar bajo presión.</string>
+    <string name="insight_driver_inconsistent">La distancia con el driver fue muy irregular (±%s yardas): céntrate en el contacto central en lugar de la distancia máxima para ser más constante.</string>
+    <string name="insight_one_putts_high">Hoy %s one-putts: embocaste de cerca de forma constante. Es un verdadero activo para tu score.</string>
+    <string name="insight_zero_three_putts">Cero tres-putts: el control de distancia en putts largos fue excelente. Gran lectura de greens y buen criterio de ritmo.</string>
+    <string name="insight_longest_drive">Drive más largo: %s yardas, gran potencia desde el tee.</string>
+    <string name="insight_driver_down_vs_history">La distancia media con el driver fue unas %s yardas menor que tu promedio reciente. Revisa si el cansancio o cambios en tu swing afectan la potencia.</string>
+    <string name="insight_driver_up_vs_history">La distancia media con el driver fue unas %s yardas mayor que tu promedio reciente: hoy tu swing estuvo muy bien.</string>
+    <string name="insight_approach_worse_vs_history">Los approaches quedaron en promedio unas %s yardas más lejos del banderín que tu promedio reciente: los hierros no estuvieron tan finos hoy.</string>
+    <string name="insight_approach_better_vs_history">Los approaches quedaron en promedio unas %s yardas más cerca del banderín que tu promedio reciente: hoy los hierros estuvieron afinados.</string>
+    <string name="insight_round_duration_long">La ronda duró %s minutos: el cansancio mental de más de 4 horas puede afectar tus decisiones en la vuelta.</string>
+
+    <!-- Accessibility labels -->
+    <string name="a11y_menu">Menú</string>
+    <string name="a11y_undo">Deshacer</string>
+    <string name="a11y_minus">Restar</string>
+    <string name="a11y_plus">Sumar</string>
+    <string name="common_saved">Guardado</string>
+    <string name="a11y_previous">Anterior</string>
+    <string name="a11y_next">Siguiente</string>
+    <string name="map_edit_shots_title">Hoyo %1$d · Editar tiros</string>
+    <string name="a11y_move_up">Subir</string>
+    <string name="a11y_move_down">Bajar</string>
+    <string name="scorecards_start_tournament">Iniciar torneo</string>
+    <string name="common_hole">Hoyo</string>
+    <string name="common_par">Par</string>
+    <string name="start_search_failed">No se pudieron buscar campos cercanos. Los campos guardados siguen disponibles.</string>
 </resources>

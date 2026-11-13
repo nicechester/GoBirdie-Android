@@ -16,11 +16,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.Tournament
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,13 +86,13 @@ fun TournamentsListScreen(
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(title = { Text("Scorecards") })
+                TopAppBar(title = { Text(stringResource(R.string.scorecards_title)) })
                 tabRow()
             }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showCreate = true }) {
-                Icon(Icons.Default.Add, "New Tournament")
+                Icon(Icons.Default.Add, stringResource(R.string.tournament_new))
             }
         },
     ) { padding ->
@@ -101,9 +104,9 @@ fun TournamentsListScreen(
             ) {
                 Text("🏆", fontSize = 48.sp)
                 Spacer(Modifier.height(12.dp))
-                Text("No Tournaments", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.tournaments_empty), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
-                Text("Tap + to create one", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.tournaments_empty_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(Modifier.padding(padding)) {
@@ -122,7 +125,7 @@ fun TournamentsListScreen(
                             Box(
                                 Modifier.fillMaxSize().background(MaterialTheme.colorScheme.error).padding(horizontal = 20.dp),
                                 contentAlignment = Alignment.CenterEnd,
-                            ) { Icon(Icons.Default.Delete, "Delete", tint = Color.White) }
+                            ) { Icon(Icons.Default.Delete, stringResource(R.string.common_delete), tint = Color.White) }
                         },
                         enableDismissFromStartToEnd = false,
                     ) {
@@ -156,7 +159,7 @@ private fun TournamentRow(tournament: Tournament, onClick: () -> Unit, onLongCli
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    "${tournament.date}  ·  ${tournament.players.size} player${if (tournament.players.size != 1) "s" else ""}",
+                    "${tournament.date}  ·  ${pluralStringResource(R.plurals.tournament_players, tournament.players.size, tournament.players.size)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -170,20 +173,20 @@ private fun RenameTournamentDialog(current: String, onConfirm: (String) -> Unit,
     var name by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename Tournament") },
+        title = { Text(stringResource(R.string.tournaments_rename)) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Name") },
+                label = { Text(stringResource(R.string.common_name)) },
                 singleLine = true,
             )
         },
         confirmButton = {
             TextButton(onClick = { if (name.isNotBlank()) onConfirm(name.trim()) }, enabled = name.isNotBlank()) {
-                Text("Save", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_save), fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
 }

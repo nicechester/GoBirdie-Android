@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +39,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.*
+import io.github.nicechester.gobirdie.ui.clubNameRes
 import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
 import io.github.nicechester.gobirdie.ui.tournaments.TournamentDetailScreen
 import io.github.nicechester.gobirdie.ui.tournaments.TournamentsViewModel
@@ -79,8 +82,8 @@ fun ScorecardsScreen(
 
     val tabRow: @Composable () -> Unit = {
         TabRow(selectedTabIndex = selectedTab) {
-            Tab(selected = selectedTab == 0, onClick = { appState.setScorecardTab(0) }, text = { Text("Rounds") })
-            Tab(selected = selectedTab == 1, onClick = { appState.setScorecardTab(1) }, text = { Text("Tournaments") })
+            Tab(selected = selectedTab == 0, onClick = { appState.setScorecardTab(0) }, text = { Text(stringResource(R.string.scorecards_rounds)) })
+            Tab(selected = selectedTab == 1, onClick = { appState.setScorecardTab(1) }, text = { Text(stringResource(R.string.scorecards_tournaments)) })
         }
     }
 
@@ -92,7 +95,7 @@ fun ScorecardsScreen(
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(title = { Text("Scorecards") })
+                TopAppBar(title = { Text(stringResource(R.string.scorecards_title)) })
                 tabRow()
             }
         }
@@ -105,9 +108,9 @@ fun ScorecardsScreen(
             ) {
                 Text("📋", fontSize = 48.sp)
                 Spacer(Modifier.height(12.dp))
-                Text("No Scorecards", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.scorecards_no_scorecards), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
-                Text("Completed rounds will appear here", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.scorecards_no_scorecards_desc), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(Modifier.padding(padding)) {
@@ -128,7 +131,7 @@ fun ScorecardsScreen(
                                 Modifier.fillMaxSize().background(MaterialTheme.colorScheme.error).padding(horizontal = 20.dp),
                                 contentAlignment = Alignment.CenterEnd,
                             ) {
-                                Icon(Icons.Default.Delete, "Delete", tint = Color.White)
+                                Icon(Icons.Default.Delete, stringResource(R.string.common_delete), tint = Color.White)
                             }
                         },
                         enableDismissFromStartToEnd = false,
@@ -234,17 +237,17 @@ private fun ScorecardDetail(
             TopAppBar(
                 title = { Text(currentRound.courseName) },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
                 },
                 actions = {
                     IconButton(onClick = {
                         val t = viewModel.createTournamentFromRound(currentRound)
                         appState.selectTournament(t.id)
                     }) {
-                        Icon(Icons.Default.EmojiEvents, "Start Tournament")
+                        Icon(Icons.Default.EmojiEvents, stringResource(R.string.scorecards_start_tournament))
                     }
                     IconButton(onClick = { showQrShare = true }) {
-                        Icon(Icons.Default.QrCode, "Share Score")
+                        Icon(Icons.Default.QrCode, stringResource(R.string.qr_title))
                     }
                 },
             )
@@ -260,13 +263,13 @@ private fun ScorecardDetail(
 
             // Front 9
             if (frontNine.isNotEmpty()) {
-                NineSection("Front 9", frontNine)
+                NineSection(stringResource(R.string.scorecards_front9), frontNine)
             }
 
             // Back 9
             if (backNine.isNotEmpty()) {
                 if (frontNine.isNotEmpty()) HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                NineSection("Back 9", backNine)
+                NineSection(stringResource(R.string.scorecards_back9), backNine)
             }
 
             // Totals
@@ -295,7 +298,7 @@ private fun ScorecardDetail(
                 ) {
                     Icon(Icons.Default.Map, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Shot Map")
+                    Text(stringResource(R.string.scorecards_shot_map))
                 }
                 Spacer(Modifier.height(16.dp))
             }
@@ -314,8 +317,8 @@ private fun NineSection(title: String, holes: List<HoleScore>) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
             Text(title, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.weight(1f))
-            Text("Putts", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center)
-            Text("Pen", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
+            Text(stringResource(R.string.round_putts), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center)
+            Text(stringResource(R.string.round_pen), fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
             Text("$totalStrokes", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(28.dp), textAlign = TextAlign.End)
         }
 
@@ -378,7 +381,7 @@ private fun TotalsRow(round: Round, playedHoles: List<HoleScore>, parTotal: Int)
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("Total", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(52.dp))
+            Text(stringResource(R.string.round_total), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.width(52.dp))
             Text("${round.totalStrokes}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = diffColor, modifier = Modifier.width(28.dp))
             Spacer(Modifier.weight(1f))
             Text("${round.totalPutts}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(32.dp), textAlign = TextAlign.Center)
@@ -395,7 +398,7 @@ private fun StatsSection(playedHoles: List<HoleScore>) {
     val girCount = playedHoles.count { it.computedGir }
 
     Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        StatRow("Holes Played", "${playedHoles.size}")
+        StatRow(stringResource(R.string.stat_holes_played), "${playedHoles.size}")
         StatRow("GIR", "$girCount/${playedHoles.size}")
     }
 }
@@ -515,14 +518,14 @@ private fun ShotMapScreen(
     if (pendingTapPoint != null) {
         AlertDialog(
             onDismissRequest = { pendingTapPoint = null },
-            title = { Text("Add Shot Here?") },
+            title = { Text(stringResource(R.string.shot_add_here)) },
             confirmButton = {
                 TextButton(onClick = { confirmPendingTap() }) {
-                    Text("Add", color = GolfGreen, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.common_add), color = GolfGreen, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingTapPoint = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingTapPoint = null }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -545,7 +548,7 @@ private fun ShotMapScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete this shot?") },
+            title = { Text(stringResource(R.string.shot_delete_confirm)) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirm = false
@@ -559,9 +562,9 @@ private fun ShotMapScreen(
                     }
                     selectedShotId = null
                     dirty = true
-                }) { Text("Delete", color = Color.Red) }
+                }) { Text(stringResource(R.string.common_delete), color = Color.Red) }
             },
-            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.common_cancel)) } },
         )
     }
 
@@ -621,19 +624,19 @@ private fun ShotMapScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = { if (holeIdx > 0) { holeIdx--; selectedShotId = null } }, enabled = holeIdx > 0) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Prev", tint = if (holeIdx > 0) Color.White else Color.Gray)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.a11y_previous), tint = if (holeIdx > 0) Color.White else Color.Gray)
                 }
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Hole ${holeScore.number}", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.round_hole, holeScore.number), color = Color.White, fontWeight = FontWeight.Bold)
                     Text(
-                        "Par ${holeScore.par}  ·  ${holeScore.strokes} strokes  ·  ${holeScore.putts} putts",
+                        stringResource(R.string.scorecards_hole_summary, holeScore.par, holeScore.strokes, holeScore.putts),
                         color = Color.White.copy(alpha = 0.85f), fontSize = 16.sp,
                     )
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { if (holeIdx < editableHoles.size - 1) { holeIdx++; selectedShotId = null } }, enabled = holeIdx < editableHoles.size - 1) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next", tint = if (holeIdx < editableHoles.size - 1) Color.White else Color.Gray)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, stringResource(R.string.a11y_next), tint = if (holeIdx < editableHoles.size - 1) Color.White else Color.Gray)
                 }
             }
         }
@@ -656,7 +659,7 @@ private fun ShotMapScreen(
                             ) {
                                 Icon(Icons.Default.SwapVert, null, Modifier.size(16.dp))
                                 Spacer(Modifier.width(4.dp))
-                                Text("Reorder", fontSize = 12.sp)
+                                Text(stringResource(R.string.shot_reorder), fontSize = 12.sp)
                             }
                             Spacer(Modifier.weight(1f))
                             if (selectedShotId != null) {
@@ -670,7 +673,7 @@ private fun ShotMapScreen(
                                 ) {
                                     Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text("Club", fontSize = 12.sp)
+                                    Text(stringResource(R.string.shot_club), fontSize = 12.sp)
                                 }
                                 TextButton(
                                     onClick = { showDeleteConfirm = true },
@@ -678,10 +681,10 @@ private fun ShotMapScreen(
                                 ) {
                                     Icon(Icons.Default.Delete, null, Modifier.size(16.dp))
                                     Spacer(Modifier.width(4.dp))
-                                    Text("Delete", fontSize = 12.sp)
+                                    Text(stringResource(R.string.common_delete), fontSize = 12.sp)
                                 }
                             } else {
-                                Text("Tap a shot to select", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                                Text(stringResource(R.string.shot_tap_select), color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
                             }
                         }
                         // Putts +/-
@@ -690,7 +693,7 @@ private fun ShotMapScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center,
                         ) {
-                            Text("Putts", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.round_putts), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.width(16.dp))
                             IconButton(
                                 onClick = {
@@ -731,9 +734,10 @@ private fun ShotMapScreen(
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                         ) {
-                            Text("Tap map to add shot", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
-                            Text("Tap pin to select", color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
-                        }                    }
+                            Text(stringResource(R.string.shot_tap_map_add), color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                            Text(stringResource(R.string.shot_tap_pin_select), color = Color.White.copy(alpha = 0.6f), fontSize = 11.sp)
+                        }
+                    }
                 }
             }
 
@@ -755,7 +759,7 @@ private fun ShotMapScreen(
                 ) {
                     Icon(Icons.Default.Edit, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (editMode) "Done" else "Edit")
+                    Text(if (editMode) stringResource(R.string.common_done) else stringResource(R.string.common_edit))
                 }
                 Button(
                     onClick = {
@@ -767,7 +771,7 @@ private fun ShotMapScreen(
                 ) {
                     Icon(Icons.Default.Close, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Close")
+                    Text(stringResource(R.string.common_close))
                 }
             }
         }
@@ -806,10 +810,10 @@ private fun ReorderShotsSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-            Text("Reorder Shots", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) }
+            Text(stringResource(R.string.shot_reorder_title), style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = { onConfirm(ordered) }) {
-                Text("Done", color = GolfGreen, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_done), color = GolfGreen, fontWeight = FontWeight.Bold)
             }
         }
         LazyColumn(Modifier.padding(horizontal = 16.dp).heightIn(max = 400.dp)) {
@@ -820,7 +824,7 @@ private fun ReorderShotsSheet(
                 ) {
                     Text("${idx + 1}.", Modifier.width(28.dp), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        shot.club.displayName,
+                        stringResource(clubNameRes(shot.club)),
                         Modifier.weight(1f).clickable { clubPickerIdx = idx },
                         style = MaterialTheme.typography.bodyMedium,
                         color = GolfGreen,
@@ -829,12 +833,12 @@ private fun ReorderShotsSheet(
                         onClick = { if (idx > 0) ordered = ordered.toMutableList().also { it.add(idx - 1, it.removeAt(idx)) } },
                         enabled = idx > 0,
                         modifier = Modifier.size(36.dp),
-                    ) { Icon(Icons.Default.KeyboardArrowUp, "Move up", Modifier.size(20.dp)) }
+                    ) { Icon(Icons.Default.KeyboardArrowUp, stringResource(R.string.a11y_move_up), Modifier.size(20.dp)) }
                     IconButton(
                         onClick = { if (idx < ordered.size - 1) ordered = ordered.toMutableList().also { it.add(idx + 1, it.removeAt(idx)) } },
                         enabled = idx < ordered.size - 1,
                         modifier = Modifier.size(36.dp),
-                    ) { Icon(Icons.Default.KeyboardArrowDown, "Move down", Modifier.size(20.dp)) }
+                    ) { Icon(Icons.Default.KeyboardArrowDown, stringResource(R.string.a11y_move_down), Modifier.size(20.dp)) }
                 }
                 HorizontalDivider(thickness = 0.5.dp)
             }

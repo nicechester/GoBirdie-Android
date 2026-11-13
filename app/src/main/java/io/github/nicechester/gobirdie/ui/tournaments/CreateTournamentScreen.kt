@@ -9,8 +9,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.Round
 import io.github.nicechester.gobirdie.core.model.Tournament
@@ -39,9 +41,9 @@ fun CreateTournamentScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Tournament") },
+                title = { Text(stringResource(R.string.tournament_new)) },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
                 },
                 actions = {
                     TextButton(
@@ -51,7 +53,7 @@ fun CreateTournamentScreen(
                         },
                         enabled = selectedCourse != null && date.isNotBlank(),
                     ) {
-                        Text("Create", fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.tournament_create), fontWeight = FontWeight.Bold)
                     }
                 },
             )
@@ -69,10 +71,10 @@ fun CreateTournamentScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Course", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.tournament_course), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        selectedCourse?.name ?: "Select a course…",
+                        selectedCourse?.name ?: stringResource(R.string.tournament_select_course),
                         style = MaterialTheme.typography.bodyLarge,
                         color = if (selectedCourse != null) MaterialTheme.colorScheme.onSurface
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -84,7 +86,7 @@ fun CreateTournamentScreen(
             OutlinedTextField(
                 value = date,
                 onValueChange = { date = it },
-                label = { Text("Date (yyyy-MM-dd)") },
+                label = { Text(stringResource(R.string.tournament_date_label)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -93,8 +95,8 @@ fun CreateTournamentScreen(
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("Title (optional)") },
-                placeholder = { Text("e.g. Saturday Scramble") },
+                label = { Text(stringResource(R.string.tournament_title_label)) },
+                placeholder = { Text(stringResource(R.string.tournament_title_placeholder)) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -112,13 +114,13 @@ private fun CoursePickerSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Text(
-            "Select Course",
+            stringResource(R.string.tournament_select_course_title),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
         if (courses.isEmpty()) {
             Text(
-                "No saved courses. Download a course first.",
+                stringResource(R.string.tournament_no_courses),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),

@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.nicechester.gobirdie.AppState
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.HoleScore
 import io.github.nicechester.gobirdie.core.model.PlayerSource
 import io.github.nicechester.gobirdie.core.model.Tournament
@@ -141,7 +143,7 @@ fun TournamentDetailScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
                 },
                 actions = {
                     if (isLive) {
@@ -157,7 +159,7 @@ fun TournamentDetailScreen(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                "Live",
+                                stringResource(R.string.tournament_live),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFF2E7D32),
@@ -165,7 +167,7 @@ fun TournamentDetailScreen(
                         }
                     }
                     IconButton(onClick = { showAddPlayer = true }) {
-                        Icon(Icons.Default.Add, "Add Player")
+                        Icon(Icons.Default.Add, stringResource(R.string.player_add))
                     }
                 },
             )
@@ -173,7 +175,7 @@ fun TournamentDetailScreen(
     ) { padding ->
         if (current.players.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No players yet. Tap + to add.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.tournament_no_players), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             Column(Modifier.fillMaxSize().padding(padding)) {
@@ -268,7 +270,7 @@ private fun ScoreGrid(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Tot",
+                    stringResource(R.string.round_tot),
                     modifier = Modifier.width(LabelW).padding(horizontal = 4.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
@@ -377,29 +379,29 @@ private fun AddPlayerSheet(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Player") },
+        title = { Text(stringResource(R.string.player_add)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Player name") },
+                    label = { Text(stringResource(R.string.player_name_label)) },
                     singleLine = true,
                 )
                 TextButton(
                     onClick = { showQrScan = true },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Scan QR Code")
+                    Text(stringResource(R.string.player_scan_qr))
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = { if (name.isNotBlank()) onAdd(name.trim()) }, enabled = name.isNotBlank()) {
-                Text("Add", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_add), fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
 
@@ -408,21 +410,21 @@ private fun RenamePlayerDialog(current: String, onConfirm: (String) -> Unit, onD
     var name by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename Player") },
+        title = { Text(stringResource(R.string.player_rename)) },
         text = {
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Name") },
+                label = { Text(stringResource(R.string.common_name)) },
                 singleLine = true,
             )
         },
         confirmButton = {
             TextButton(onClick = { if (name.isNotBlank()) onConfirm(name.trim()) }, enabled = name.isNotBlank()) {
-                Text("Save", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_save), fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
 
@@ -430,7 +432,7 @@ private fun RenamePlayerDialog(current: String, onConfirm: (String) -> Unit, onD
 private fun StrokePickerDialog(current: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Strokes") },
+        title = { Text(stringResource(R.string.round_strokes)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Two rows of 5
@@ -465,7 +467,7 @@ private fun StrokePickerDialog(current: Int, onSelect: (Int) -> Unit, onDismiss:
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = { onSelect(0); onDismiss() }) { Text("Clear") }
+            TextButton(onClick = { onSelect(0); onDismiss() }) { Text(stringResource(R.string.common_clear)) }
         },
     )
 }

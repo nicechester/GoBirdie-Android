@@ -5,9 +5,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.*
+import io.github.nicechester.gobirdie.ui.baselineNameRes
+import io.github.nicechester.gobirdie.ui.insightMessage
 
 @Composable
 fun InsightsCard(
@@ -19,6 +24,7 @@ fun InsightsCard(
     val insights = RoundInsightsEngine.generate(round, courseHoles, historicalRounds, baseline)
     if (insights.isEmpty()) return
 
+    val context = LocalContext.current
     Surface(
         shape = RoundedCornerShape(10.dp),
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -27,13 +33,13 @@ fun InsightsCard(
         Column(Modifier.padding(12.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    "💡 Key Insights",
+                    stringResource(R.string.insights_title),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "vs ${baseline.displayName}",
+                    stringResource(R.string.insights_vs_baseline, stringResource(baselineNameRes(baseline))),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 )
@@ -43,7 +49,7 @@ fun InsightsCard(
                 Row {
                     Text(icon(insight.severity), style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.width(6.dp))
-                    Text(insight.message, style = MaterialTheme.typography.bodySmall)
+                    Text(insightMessage(context, insight), style = MaterialTheme.typography.bodySmall)
                 }
                 if (index < insights.lastIndex) {
                     HorizontalDivider(Modifier.padding(vertical = 6.dp), thickness = 0.5.dp)

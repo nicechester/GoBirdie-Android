@@ -18,8 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.Course
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,7 +30,7 @@ fun StartRoundScreen(
     viewModel: StartRoundViewModel,
     onStartRound: (Course, Int) -> Unit,
     onDismiss: () -> Unit,
-    title: String = "Start a Round",
+    title: String? = null,
 ) {
     val state by viewModel.state.collectAsState()
     val searchText by viewModel.searchText.collectAsState()
@@ -41,10 +43,10 @@ fun StartRoundScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title) },
+                title = { Text(title ?: stringResource(R.string.round_start)) },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, "Close")
+                        Icon(Icons.Default.Close, stringResource(R.string.common_close))
                     }
                 },
             )
@@ -56,7 +58,7 @@ fun StartRoundScreen(
         ) {
             Icon(Icons.Default.Flag, null, Modifier.size(48.dp), tint = Color(0xFF2E7D32))
             Spacer(Modifier.height(8.dp))
-            Text("Discover nearby courses", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.start_discover), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(16.dp))
 
             when (val s = state) {
@@ -64,7 +66,7 @@ fun StartRoundScreen(
                     Spacer(Modifier.height(32.dp))
                     CircularProgressIndicator(color = Color(0xFF2E7D32))
                     Spacer(Modifier.height(8.dp))
-                    Text("Finding your location...")
+                    Text(stringResource(R.string.start_finding_location))
                 }
 
                 is StartRoundUiState.CourseList -> {
@@ -73,7 +75,7 @@ fun StartRoundScreen(
                         value = searchText,
                         onValueChange = { viewModel.onSearchTextChanged(it) },
                         modifier = Modifier.fillMaxWidth().semantics { testTag = "searchField" },
-                        placeholder = { Text("Search by name") },
+                        placeholder = { Text(stringResource(R.string.start_search_placeholder)) },
                         leadingIcon = { Icon(Icons.Default.Search, null) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -86,11 +88,23 @@ fun StartRoundScreen(
                         Spacer(Modifier.height(4.dp))
                     }
 
+                    if (s.searchFailed) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                stringResource(R.string.start_search_failed),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry)) }
+                        }
+                    }
+
                     if (s.courses.isEmpty() && !s.isSearchingOnline) {
                         Spacer(Modifier.height(32.dp))
-                        Text("No courses found")
+                        Text(stringResource(R.string.start_no_courses))
                         Spacer(Modifier.height(8.dp))
-                        Button(onClick = { viewModel.retry() }) { Text("Retry") }
+                        Button(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry)) }
                     } else {
                         LazyColumn(Modifier.weight(1f)) {
                             items(s.courses, key = { it.id }) { course ->
@@ -104,7 +118,7 @@ fun StartRoundScreen(
                     Spacer(Modifier.height(32.dp))
                     CircularProgressIndicator(color = Color(0xFF2E7D32))
                     Spacer(Modifier.height(8.dp))
-                    Text("Downloading ${s.name}...")
+                    Text(stringResource(R.string.start_downloading, s.name))
                 }
 
                 is StartRoundUiState.SelectHole -> {
@@ -117,7 +131,7 @@ fun StartRoundScreen(
                     Spacer(Modifier.height(32.dp))
                     Text(s.message, color = MaterialTheme.colorScheme.error)
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = { viewModel.retry() }) { Text("Retry") }
+                    Button(onClick = { viewModel.retry() }) { Text(stringResource(R.string.common_retry)) }
                 }
             }
         }
@@ -144,7 +158,7 @@ private fun CourseRow(course: CourseItem, onClick: () -> Unit) {
                 }
             }
             if (course.isSaved) {
-                Icon(Icons.Default.CheckCircle, "Saved", tint = Color(0xFF2E7D32))
+                Icon(Icons.Default.CheckCircle, stringResource(R.string.common_saved), tint = Color(0xFF2E7D32))
             }
         }
     }
@@ -156,7 +170,7 @@ private fun HolePicker(course: Course, onStart: (Int) -> Unit) {
 
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.height(16.dp))
-        Text("Which hole are you starting on?", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.round_which_hole), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(16.dp))
 
         LazyColumn(Modifier.weight(1f)) {
@@ -170,9 +184,9 @@ private fun HolePicker(course: Course, onStart: (Int) -> Unit) {
                     else MaterialTheme.colorScheme.surface,
                 ) {
                     Row(Modifier.padding(12.dp)) {
-                        Text("Hole ${hole.number}", Modifier.weight(1f))
-                        Text("Par ${hole.par}")
-                        hole.yardage?.let { Text("  $it yds", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        Text(stringResource(R.string.round_hole, hole.number), Modifier.weight(1f))
+                        Text(stringResource(R.string.round_par, hole.par))
+                        hole.yardage?.let { Text("  $it ${stringResource(R.string.distance_yds)}", color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
             }
@@ -184,7 +198,7 @@ private fun HolePicker(course: Course, onStart: (Int) -> Unit) {
             modifier = Modifier.fillMaxWidth().height(48.dp).semantics { testTag = "startOnHoleButton" },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
         ) {
-            Text("Start on Hole $selected")
+            Text(stringResource(R.string.round_start_on_hole, selected))
         }
         Spacer(Modifier.height(16.dp))
     }

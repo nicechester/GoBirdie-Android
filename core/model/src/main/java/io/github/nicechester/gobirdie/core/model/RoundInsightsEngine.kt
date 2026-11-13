@@ -7,7 +7,8 @@ data class RoundInsight(
     val code: String,
     val severity: Severity,
     val tier: Int,
-    val message: String,
+    /** Template arguments for the localized message keyed by [code] (formatted, locale-neutral). */
+    val args: List<String>,
 ) {
     enum class Severity { CRITICAL, WARNING, POSITIVE, INFO }
 }
@@ -250,8 +251,8 @@ object RoundInsightsEngine {
     private fun evaluate(ctx: Context): List<RoundInsight> {
         val fired = mutableListOf<RoundInsight>()
 
-        fun add(code: String, severity: RoundInsight.Severity, tier: Int, msg: String) {
-            fired += RoundInsight(code, severity, tier, msg)
+        fun add(code: String, severity: RoundInsight.Severity, tier: Int, vararg args: String) {
+            fired += RoundInsight(code, severity, tier, args.toList())
         }
 
         fun sgFmt(v: Double) = (if (v >= 0) "+" else "") + "%.2f".format(v)
@@ -260,114 +261,113 @@ object RoundInsightsEngine {
 
         if (ctx.sgPutting < -1.5)
             add("SG_PUTTING_CRITICAL", RoundInsight.Severity.CRITICAL, 1,
-                "Putting was the biggest hole in your scorecard — you lost ${sgFmt(ctx.sgPutting)} strokes on the greens. Speed control on long putts is the quickest fix.")
+                sgFmt(ctx.sgPutting))
         if (ctx.sgApproach < -1.5)
             add("SG_APPROACH_CRITICAL", RoundInsight.Severity.CRITICAL, 1,
-                "Approach play was your Achilles heel — ${sgFmt(ctx.sgApproach)} strokes lost into the green. Distance control and iron accuracy need work.")
+                sgFmt(ctx.sgApproach))
         if (ctx.sgOffTee < -1.5)
             add("SG_OFF_TEE_CRITICAL", RoundInsight.Severity.CRITICAL, 1,
-                "Tee shots were a major problem — ${sgFmt(ctx.sgOffTee)} strokes lost off the tee. Consider trading distance for accuracy on tight holes.")
+                sgFmt(ctx.sgOffTee))
         if (ctx.sgShortGame < -1.0)
             add("SG_SHORT_GAME_CRITICAL", RoundInsight.Severity.CRITICAL, 1,
-                "Your short game lost you ${sgFmt(ctx.sgShortGame)} strokes. Getting up-and-down more consistently is the fastest way to lower your score.")
+                sgFmt(ctx.sgShortGame))
 
         // ── TIER 1: Strong positives ──────────────────────────────────────────
 
         if (ctx.sgPutting > 1.0)
             add("SG_PUTTING_STRONG", RoundInsight.Severity.POSITIVE, 1,
-                "The putter was on fire — ${sgFmt(ctx.sgPutting)} strokes gained on the greens. Your pace control and green reading were excellent.")
+                sgFmt(ctx.sgPutting))
         if (ctx.sgApproach > 1.0)
             add("SG_APPROACH_STRONG", RoundInsight.Severity.POSITIVE, 1,
-                "Ball striking was excellent — ${sgFmt(ctx.sgApproach)} strokes gained on approach shots. That kind of iron play creates birdie looks.")
+                sgFmt(ctx.sgApproach))
         if (ctx.sgTotal > 2.0)
             add("SG_TOTAL_POSITIVE", RoundInsight.Severity.POSITIVE, 1,
-                "Overall you gained ${sgFmt(ctx.sgTotal)} strokes vs your baseline — a genuinely strong all-around performance.")
+                sgFmt(ctx.sgTotal))
 
         // ── TIER 2: Correlations & patterns ──────────────────────────────────
 
         if (ctx.fir >= 55 && ctx.girPct < 35)
             add("HIGH_FIR_LOW_GIR", RoundInsight.Severity.CRITICAL, 2,
-                "Hit ${ctx.fir}% of fairways but only ${ctx.girPct}% of greens — your driving sets up good positions but the irons aren't converting.")
+                "${ctx.fir}", "${ctx.girPct}")
         if (ctx.fir < 35 && ctx.girPct >= 50)
             add("LOW_FIR_HIGH_GIR", RoundInsight.Severity.INFO, 2,
-                "Only ${ctx.fir}% fairways but ${ctx.girPct}% GIR — impressive recovery iron play. Cleaning up tee shots would make you even more dangerous.")
+                "${ctx.fir}", "${ctx.girPct}")
         if (ctx.threePutts >= 3)
             add("THREE_PUTTS", RoundInsight.Severity.CRITICAL, 2,
-                "${ctx.threePutts} three-putts — each one is a stroke wasted. Getting the first putt within 3 feet eliminates the damage.")
+                "${ctx.threePutts}")
         else if (ctx.threePutts == 2)
             add("THREE_PUTTS", RoundInsight.Severity.WARNING, 2,
-                "${ctx.threePutts} three-putts today. Lag putting distance control from long range needs attention.")
+                "${ctx.threePutts}")
         if (ctx.scramblingPct >= 50 && ctx.girPct < 45)
             add("GOOD_SCRAMBLING", RoundInsight.Severity.POSITIVE, 2,
-                "Only ${ctx.girPct}% GIR but scrambled ${ctx.scramblingPct}% — your short game saved several strokes and kept the score respectable.")
+                "${ctx.girPct}", "${ctx.scramblingPct}")
         if (ctx.scramblingPct < 25 && ctx.girPct < 45)
             add("POOR_SCRAMBLING", RoundInsight.Severity.CRITICAL, 2,
-                "Missed ${100 - ctx.girPct}% of greens and only scrambled ${ctx.scramblingPct}% — short game is costing you 4-5 strokes per round.")
+                "${100 - ctx.girPct}", "${ctx.scramblingPct}")
         if (ctx.frontScore != null && ctx.backScore != null) {
             if (ctx.backScore > ctx.frontScore + 4)
                 add("FRONT_BACK_WORSE", RoundInsight.Severity.WARNING, 2,
-                    "Front ${ctx.frontScore}, back ${ctx.backScore} — a ${ctx.backScore - ctx.frontScore} shot drop-off. Fatigue or concentration may be fading late.")
+                    "${ctx.frontScore}", "${ctx.backScore}", "${ctx.backScore - ctx.frontScore}")
             else if (ctx.frontScore > ctx.backScore + 3)
                 add("FRONT_BACK_BETTER", RoundInsight.Severity.POSITIVE, 2,
-                    "Strong finish — improved ${ctx.frontScore - ctx.backScore} shots from front (${ctx.frontScore}) to back (${ctx.backScore}).")
+                    "${ctx.frontScore - ctx.backScore}", "${ctx.frontScore}", "${ctx.backScore}")
         }
         if (ctx.par3AvgOverPar > 0.8)
             add("PAR3_STRUGGLES", RoundInsight.Severity.WARNING, 2,
-                "Par 3s averaged +${"%.1f".format(ctx.par3AvgOverPar)} over par — iron accuracy from the tee needs attention on short holes.")
+                "%.1f".format(ctx.par3AvgOverPar))
         if (ctx.par5AvgOverPar > 0.5)
             add("PAR5_SCORING", RoundInsight.Severity.WARNING, 2,
-                "Par 5s averaged +${"%.1f".format(ctx.par5AvgOverPar)} — not capitalizing on scoring holes. Better course management could unlock birdies.")
+                "%.1f".format(ctx.par5AvgOverPar))
         else if (ctx.par5AvgOverPar < -0.3)
             add("PAR5_BIRDIE_MACHINE", RoundInsight.Severity.POSITIVE, 2,
-                "Par 5s are your scoring holes — averaging ${"%.1f".format(ctx.par5AvgOverPar)} today. Your length and course management there is a real strength.")
+                "%.1f".format(ctx.par5AvgOverPar))
         if (ctx.maxConsecBogeys >= 3)
             add("CONSECUTIVE_BOGEYS", RoundInsight.Severity.WARNING, 2,
-                "${ctx.maxConsecBogeys} bogeys in a row — bad streaks often snowball from one poor shot. A reset routine between holes is key.")
+                "${ctx.maxConsecBogeys}")
         val earlyHr = ctx.earlyRoundHr; val lateHr = ctx.lateRoundHr
         if (earlyHr != null && lateHr != null && lateHr > earlyHr + 8)
             add("HIGH_HR_LATE_ROUND", RoundInsight.Severity.INFO, 2,
-                "HR climbed ${(lateHr - earlyHr).toInt()} bpm from front to back nine — fatigue or pressure may have been a factor in the later holes.")
+                "${(lateHr - earlyHr).toInt()}")
 
         // ── TIER 3: Club-specific ─────────────────────────────────────────────
 
         ctx.worstClub?.let {
             add("WORST_CLUB_SG", RoundInsight.Severity.WARNING, 3,
-                "Your ${it.name} was your weakest club — avg SG ${sgFmt(it.avgSg)} over ${it.shots} shots. Targeted practice with this club would pay dividends.")
+                it.name, sgFmt(it.avgSg), "${it.shots}")
         }
         ctx.bestClub?.let {
             add("BEST_CLUB_SG", RoundInsight.Severity.POSITIVE, 3,
-                "Your ${it.name} was dialed in — ${sgFmt(it.avgSg)} avg SG over ${it.shots} shots. That's a club you can trust under pressure.")
+                it.name, sgFmt(it.avgSg), "${it.shots}")
         }
         ctx.driverDistStd?.let { std ->
             if (std > 30)
                 add("DRIVER_INCONSISTENT", RoundInsight.Severity.WARNING, 3,
-                    "Driver distance was all over the place (±${std.toInt()} yds) — focus on center contact over maximum distance for more consistency.")
+                    "${std.toInt()}")
         }
 
         // ── TIER 4: Minor observations ────────────────────────────────────────
 
         if (ctx.onePutts >= 4)
             add("ONE_PUTTS_HIGH", RoundInsight.Severity.POSITIVE, 4,
-                "${ctx.onePutts} one-putts today — you were holing out from close range consistently. That's a real scoring asset.")
+                "${ctx.onePutts}")
         if (ctx.threePutts == 0 && ctx.totalPutts <= (ctx.holesPlayed * 1.8).toInt())
-            add("ZERO_THREE_PUTTS", RoundInsight.Severity.POSITIVE, 4,
-                "Zero three-putts — lag putting distance control was excellent. Great green reading and pace judgment.")
-        ctx.longestDriveYards?.let { if (it >= 270) add("LONGEST_DRIVE", RoundInsight.Severity.POSITIVE, 4, "Longest drive: $it yards — great power off the tee.") }
+            add("ZERO_THREE_PUTTS", RoundInsight.Severity.POSITIVE, 4)
+        ctx.longestDriveYards?.let { if (it >= 270) add("LONGEST_DRIVE", RoundInsight.Severity.POSITIVE, 4, "$it") }
         ctx.histDriverDiff?.let { diff ->
             if (diff <= -15) add("DRIVER_DOWN_VS_HISTORY", RoundInsight.Severity.WARNING, 4,
-                "Avg driver distance was ~${abs(diff).toInt()} yards shorter than your recent average. Check if fatigue or swing changes are affecting your power.")
+                "${abs(diff).toInt()}")
             else if (diff >= 10) add("DRIVER_UP_VS_HISTORY", RoundInsight.Severity.POSITIVE, 4,
-                "Avg driver distance was ~${diff.toInt()} yards longer than your recent average — you were swinging well today.")
+                "${diff.toInt()}")
         }
         ctx.histApproachDiff?.let { diff ->
             if (diff >= 8) add("APPROACH_WORSE_VS_HISTORY", RoundInsight.Severity.WARNING, 4,
-                "Approaches averaged ~${diff.toInt()} yards farther from the pin than your recent average — irons weren't as sharp today.")
+                "${diff.toInt()}")
             else if (diff <= -6) add("APPROACH_BETTER_VS_HISTORY", RoundInsight.Severity.POSITIVE, 4,
-                "Approaches averaged ~${abs(diff).toInt()} yards closer to the pin than your recent average — irons were dialed in today.")
+                "${abs(diff).toInt()}")
         }
         ctx.durationMin?.let { mins ->
             if (mins > 270) add("ROUND_DURATION_LONG", RoundInsight.Severity.INFO, 4,
-                "The round took ${mins.toInt()} minutes — mental fatigue over 4+ hours can affect decision-making on the back nine.")
+                "${mins.toInt()}")
         }
 
         // ── Rank: tier → severity, cap positives ─────────────────────────────

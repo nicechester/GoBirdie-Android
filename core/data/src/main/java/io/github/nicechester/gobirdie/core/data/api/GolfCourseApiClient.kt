@@ -9,7 +9,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 data class GolfCourseResult(
-    val id: Int,
+    val id: String,
     val name: String,
     val location: GpsPoint,
     val city: String,
@@ -54,7 +54,7 @@ class GolfCourseApiClient(private val apiKey: String) {
             .sortedBy { it.location.distanceMeters(playerLocation) }
     }
 
-    fun fetchHoles(courseId: Int, teeColor: String = "Blue"): List<GolfCourseHole> {
+    fun fetchHoles(courseId: String, teeColor: String = "Blue"): List<GolfCourseHole> {
         val request = Request.Builder().url("$baseUrl/courses/$courseId")
             .header("Authorization", "Key $apiKey")
             .build()
@@ -74,15 +74,24 @@ class GolfCourseApiClient(private val apiKey: String) {
 
     // --- JSON response types ---
 
+    // Search results: `tees` is a count object here ({"male": 3, "female": 3}), not a list, so it's omitted.
     @Serializable
-    private data class SearchResponse(val courses: List<ApiCourse>)
+    private data class SearchResponse(val courses: List<ApiCourseSummary>)
 
     @Serializable
-    private data class CourseDetailResponse(val course: ApiCourse)
+    private data class ApiCourseSummary(
+        val id: String,
+        @SerialName("course_name") val courseName: String,
+        val location: ApiLocation,
+    )
+
+    // Course detail: `tees` is a map of tee lists with hole data.
+    @Serializable
+    private data class CourseDetailResponse(val course: ApiCourseDetail)
 
     @Serializable
-    private data class ApiCourse(
-        val id: Int,
+    private data class ApiCourseDetail(
+        val id: String,
         @SerialName("course_name") val courseName: String,
         val location: ApiLocation,
         val tees: ApiTees = ApiTees(),

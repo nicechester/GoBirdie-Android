@@ -14,9 +14,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
-import androidx.compose.runtime.*import androidx.compose.ui.Alignment
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import io.github.nicechester.gobirdie.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -80,9 +83,9 @@ fun CollectScoresScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan Score") },
+                title = { Text(stringResource(R.string.scan_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
                 },
             )
         }
@@ -94,12 +97,12 @@ fun CollectScoresScreen(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("Camera unavailable", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.scan_camera_unavailable), style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
-                    Text(cameraError ?: "Unknown error", style = MaterialTheme.typography.bodySmall)
+                    Text(cameraError ?: stringResource(R.string.common_unknown_error), style = MaterialTheme.typography.bodySmall)
                     Spacer(Modifier.height(12.dp))
                     Button(onClick = onDismiss) {
-                        Text("Back")
+                        Text(stringResource(R.string.common_back))
                     }
                 }
             } else if (hasCamera) {
@@ -115,7 +118,7 @@ fun CollectScoresScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
                 Text(
-                    "Point camera at a GoBirdie QR code",
+                    stringResource(R.string.scan_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = androidx.compose.ui.graphics.Color.White,
                     modifier = Modifier
@@ -128,10 +131,10 @@ fun CollectScoresScreen(
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("Camera permission required")
+                    Text(stringResource(R.string.scan_permission_required))
                     Spacer(Modifier.height(12.dp))
                     Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Permission")
+                        Text(stringResource(R.string.scan_grant))
                     }
                 }
             }
@@ -159,7 +162,7 @@ private fun CameraPreview(
                 val cameraProvider = try {
                     cameraProviderFuture.get()
                 } catch (e: Exception) {
-                    onError("Camera not available: ${e.message}")
+                    onError(ctx.getString(R.string.scan_error_unavailable, e.message))
                     return@addListener
                 }
                 val preview = Preview.Builder().build()
@@ -177,7 +180,7 @@ private fun CameraPreview(
                         analysis,
                     )
                 }.onFailure { e ->
-                    onError("Failed to start camera: ${e.message}")
+                    onError(ctx.getString(R.string.scan_error_start, e.message))
                 }
             }, ContextCompat.getMainExecutor(ctx))
             previewView
@@ -228,7 +231,7 @@ private fun PlayerNameDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Player Name") },
+        title = { Text(stringResource(R.string.player_name_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -237,14 +240,14 @@ private fun PlayerNameDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    "${payload.h.sumOf { it.firstOrNull() ?: 0 }} strokes",
+                    stringResource(R.string.strokes_count, payload.h.sumOf { it.firstOrNull() ?: 0 }),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold,
                 )
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Player name") },
+                    label = { Text(stringResource(R.string.player_name_label)) },
                     singleLine = true,
                 )
             }
@@ -254,11 +257,11 @@ private fun PlayerNameDialog(
                 onClick = { if (name.isNotBlank()) onConfirm(name.trim()) },
                 enabled = name.isNotBlank(),
             ) {
-                Text("Add Player", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.player_add), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Re-scan") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.scan_rescan)) }
         },
     )
 }

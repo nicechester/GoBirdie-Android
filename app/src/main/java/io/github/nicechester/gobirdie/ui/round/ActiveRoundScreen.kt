@@ -23,10 +23,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.data.session.RoundSession
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.ui.components.ClubPickerSheet
@@ -76,51 +78,51 @@ fun ActiveRoundScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Hole ${hole?.number ?: ""}",
+                stringResource(R.string.round_hole, hole?.number ?: 0),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { testTag = "holeLabel" },
             )
             Spacer(Modifier.width(8.dp))
-            val info = buildString {
-                append("Par ${hole?.par ?: ""}")
-                courseHole?.yardage?.let { append("  ·  $it yds") }
-            }
+            val info = listOfNotNull(
+                stringResource(R.string.round_par, hole?.par ?: 0),
+                courseHole?.yardage?.let { "$it ${stringResource(R.string.distance_yds)}" },
+            ).joinToString("  ·  ")
             Text(info, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.weight(1f))
 
             Box {
                 IconButton(onClick = { showMenu = true }) {
-                    Icon(Icons.Default.MoreVert, "Menu")
+                    Icon(Icons.Default.MoreVert, stringResource(R.string.a11y_menu))
                 }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     onCreateTournament?.let { create ->
                         DropdownMenuItem(
-                            text = { Text("New Tournament") },
+                            text = { Text(stringResource(R.string.tournament_new)) },
                             onClick = { showMenu = false; create() },
                             leadingIcon = { Icon(Icons.Default.EmojiEvents, null) },
                         )
                         HorizontalDivider()
                     }
                     DropdownMenuItem(
-                        text = { Text("Sync Watch") },
+                        text = { Text(stringResource(R.string.round_sync_watch)) },
                         onClick = { showMenu = false; onSyncWatch() },
                         leadingIcon = { Icon(Icons.Default.Watch, null) },
                     )
                     DropdownMenuItem(
-                        text = { Text("End Round") },
+                        text = { Text(stringResource(R.string.round_end)) },
                         onClick = { showMenu = false; showEndConfirm = true },
                         leadingIcon = { Icon(Icons.Default.Flag, null) },
                     )
                     if ((hole?.shots?.size ?: 0) > 0) {
                         DropdownMenuItem(
-                            text = { Text("Move Shots to Hole...") },
+                            text = { Text(stringResource(R.string.round_move_shots_to)) },
                             onClick = { showMenu = false; showMoveShots = true },
                             leadingIcon = { Icon(Icons.Default.SwapHoriz, null) },
                         )
                     }
                     DropdownMenuItem(
-                        text = { Text("Cancel Round", color = MaterialTheme.colorScheme.error) },
+                        text = { Text(stringResource(R.string.round_cancel), color = MaterialTheme.colorScheme.error) },
                         onClick = { showMenu = false; onCancelRound() },
                         leadingIcon = { Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.error) },
                     )
@@ -151,7 +153,7 @@ fun ActiveRoundScreen(
                 ) {
                     Icon(Icons.Default.LocationOn, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Mark Shot")
+                    Text(stringResource(R.string.round_mark_shot))
                 }
                 FilledTonalButton(onClick = { onUserInteraction(); session.addPenalty() }, Modifier.width(64.dp).height(48.dp)) {
                     Text("⚠", fontSize = 20.sp)
@@ -161,7 +163,7 @@ fun ActiveRoundScreen(
                     modifier = Modifier.width(64.dp).height(48.dp),
                     enabled = (hole?.strokes ?: 0) > 0,
                 ) {
-                    Icon(Icons.Default.Refresh, "Undo", Modifier.size(22.dp))
+                    Icon(Icons.Default.Refresh, stringResource(R.string.a11y_undo), Modifier.size(22.dp))
                 }
             }
 
@@ -173,13 +175,13 @@ fun ActiveRoundScreen(
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Putts", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.round_putts), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.weight(1f))
                     IconButton(
                         onClick = { onUserInteraction(); session.setPutts((hole?.putts ?: 0) - 1) },
                         enabled = (hole?.putts ?: 0) > 0,
                     ) {
-                        Icon(Icons.Default.RemoveCircle, "Minus", tint = if ((hole?.putts ?: 0) > 0) GolfGreen else Color.Gray)
+                        Icon(Icons.Default.RemoveCircle, stringResource(R.string.a11y_minus), tint = if ((hole?.putts ?: 0) > 0) GolfGreen else Color.Gray)
                     }
                     Text("${hole?.putts ?: 0}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
                         modifier = Modifier.semantics { testTag = "puttCount" })
@@ -187,7 +189,7 @@ fun ActiveRoundScreen(
                         onClick = { onUserInteraction(); session.setPutts((hole?.putts ?: 0) + 1) },
                         modifier = Modifier.semantics { testTag = "puttPlus" },
                     ) {
-                        Icon(Icons.Default.AddCircle, "Plus", tint = GolfGreen)
+                        Icon(Icons.Default.AddCircle, stringResource(R.string.a11y_plus), tint = GolfGreen)
                     }
                 }
             }
@@ -203,7 +205,7 @@ fun ActiveRoundScreen(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Prev")
+                    Text(stringResource(R.string.round_prev))
                 }
                 Button(
                     onClick = { onUserInteraction(); if (isLast) onEndRound() else session.navigateTo(session.currentHoleNumber + 1) },
@@ -213,7 +215,7 @@ fun ActiveRoundScreen(
                         contentColor = if (isLast) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
                     ),
                 ) {
-                    Text(if (isLast) "Finish" else "Next")
+                    Text(if (isLast) stringResource(R.string.round_finish) else stringResource(R.string.round_next))
                     Spacer(Modifier.width(4.dp))
                     Icon(if (isLast) Icons.Default.Flag else Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
                 }
@@ -261,15 +263,15 @@ fun ActiveRoundScreen(
     if (showEndConfirm) {
         AlertDialog(
             onDismissRequest = { showEndConfirm = false },
-            title = { Text("End Round?") },
-            text = { Text("Save and finish this round?") },
+            title = { Text(stringResource(R.string.round_end_confirm_title)) },
+            text = { Text(stringResource(R.string.round_save_finish)) },
             confirmButton = {
                 TextButton(onClick = { showEndConfirm = false; onEndRound() }) {
-                    Text("End", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.round_end_action), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEndConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showEndConfirm = false }) { Text(stringResource(R.string.common_cancel)) }
             },
         )
     }
@@ -295,16 +297,16 @@ private fun DistanceDisplay(
             verticalAlignment = Alignment.Bottom,
         ) {
             // Front
-            DistanceCol(label = "Front", value = front?.toString() ?: "—", isPrimary = false)
+            DistanceCol(label = stringResource(R.string.distance_front), value = front?.toString() ?: "—", isPrimary = false)
             // Flag
             DistanceCol(
-                label = "Flag",
+                label = stringResource(R.string.distance_flag),
                 value = flag?.toString() ?: courseHole?.yardage ?: "—",
                 isPrimary = true,
                 modifier = Modifier.semantics { testTag = "flagDistance" },
             )
             // Back
-            DistanceCol(label = "Back", value = back?.toString() ?: "—", isPrimary = false)
+            DistanceCol(label = stringResource(R.string.distance_back), value = back?.toString() ?: "—", isPrimary = false)
         }
     }
 }
@@ -344,7 +346,7 @@ private fun MiniScorecard(
         // Header
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(
-                "SCORECARD",
+                stringResource(R.string.round_scorecard),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -481,7 +483,7 @@ private fun MoveShotsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Move Shots to Hole") },
+        title = { Text(stringResource(R.string.round_move_shots_title)) },
         text = {
             LazyColumn {
                 items(targets) { hole ->
@@ -491,7 +493,7 @@ private fun MoveShotsDialog(
                     ) {
                         RadioButton(selected = hole.number == selected, onClick = { selected = hole.number })
                         Spacer(Modifier.width(8.dp))
-                        Text("Hole ${hole.number}  (Par ${hole.par})", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.round_hole_par, hole.number, hole.par), style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -500,8 +502,8 @@ private fun MoveShotsDialog(
             TextButton(
                 onClick = { selected?.let { onConfirm(it) } },
                 enabled = selected != null,
-            ) { Text("Move", color = GolfGreen, fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.shot_move), color = GolfGreen, fontWeight = FontWeight.Bold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
     )
 }
