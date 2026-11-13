@@ -1,9 +1,12 @@
 package io.github.nicechester.gobirdie.ui.round
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.nicechester.gobirdie.Config
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.api.GolfCourseApiClient
 import io.github.nicechester.gobirdie.core.data.api.GolfCourseResult
@@ -23,6 +26,8 @@ sealed class StartRoundUiState {
     data class CourseList(
         val courses: List<CourseItem>,
         val isSearchingOnline: Boolean = false,
+        /** Nearby (OSM) search failed, e.g. Overpass unavailable. Saved courses are still listed. */
+        val searchFailed: Boolean = false,
     ) : StartRoundUiState()
     data class Downloading(val name: String) : StartRoundUiState()
     data class SelectHole(val course: Course) : StartRoundUiState()
@@ -36,11 +41,17 @@ data class CourseItem(
     val city: String,
     val isSaved: Boolean,
     val distanceText: String?,
+    /** golfcourseapi.com string ID; null for OSM/saved-only items. */
+    val apiId: String? = null,
 )
+
+/** Positive list-key derived from a string API ID (OSM items use negative IDs, saved items use stableId). */
+private fun apiItemId(apiId: String): Int = (apiId.hashCode() and 0x7fffffff).coerceAtLeast(1)
 
 @HiltViewModel
 class StartRoundViewModel @Inject constructor(
     private val courseStore: CourseStore,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val overpass = OverpassClient()
@@ -115,13 +126,13 @@ class StartRoundViewModel @Inject constructor(
                 val merged = (current + newItems).sortedBy { it.location.distanceMeters(location) }
                 _state.value = StartRoundUiState.CourseList(merged, isSearchingOnline = false)
             } catch (e: Exception) {
-                // Never replace CourseList with Error — just stop the spinner
-                // so the search bar stays visible for name-based search
+                // Never replace CourseList with Error — keep saved courses and the search bar,
+                // but flag the failure so the user sees it instead of an empty list.
                 val current = _state.value
                 if (current is StartRoundUiState.CourseList) {
-                    _state.value = current.copy(isSearchingOnline = false)
+                    _state.value = current.copy(isSearchingOnline = false, searchFailed = true)
                 } else {
-                    _state.value = StartRoundUiState.CourseList(emptyList(), isSearchingOnline = false)
+                    _state.value = StartRoundUiState.CourseList(emptyList(), isSearchingOnline = false, searchFailed = true)
                 }
             }
         }
@@ -140,9 +151,10 @@ class StartRoundViewModel @Inject constructor(
                 val results = golfApi.searchCourses(query, loc)
                 val items = results.map { r ->
                     CourseItem(
-                        id = r.id, name = r.name, location = r.location, city = r.city,
+                        id = apiItemId(r.id), name = r.name, location = r.location, city = r.city,
                         isSaved = false,
                         distanceText = playerLocation?.let { formatDistance(r.location, it) },
+                        apiId = r.id,
                     )
                 }
                 _state.value = StartRoundUiState.CourseList(items, isSearchingOnline = false)
@@ -154,7 +166,7 @@ class StartRoundViewModel @Inject constructor(
 
     fun selectCourse(item: CourseItem) {
         // Check cache
-        val cacheId = if (item.id > 0) "api-${item.id}" else "osm-${kotlin.math.abs(item.id)}"
+        val cacheId = item.apiId?.let { "api-$it" } ?: "osm-${kotlin.math.abs(item.id)}"
         val cached = courseStore.load(cacheId)
             ?: courseStore.loadAll().firstOrNull { it.name == item.name }
         if (cached != null) {
@@ -169,7 +181,7 @@ class StartRoundViewModel @Inject constructor(
                 courseStore.save(course)
                 _state.value = StartRoundUiState.SelectHole(course)
             } catch (e: Exception) {
-                _state.value = StartRoundUiState.Error("Download failed: ${e.message}")
+                _state.value = StartRoundUiState.Error(context.getString(R.string.courses_download_failed, e.message))
             }
         }
     }
@@ -198,14 +210,18 @@ class StartRoundViewModel @Inject constructor(
         }
 
         // For API courses, fetch hole data + Overpass GPS geometry
-        val apiHoles = golfApi.fetchHoles(item.id)
+        val apiId = item.apiId ?: throw Exception("Missing course id")
+        val apiHoles = golfApi.fetchHoles(apiId)
         val overpassHoles = try {
             val nearby = overpass.searchCourses(item.location, 5000)
             val match = nearby.firstOrNull { it.name.equals(item.name, ignoreCase = true) }
                 ?: nearby.firstOrNull()
             match?.let { overpass.downloadCourse(it.osmId, item.name, playerLocation) }
                 ?.firstOrNull()?.holes ?: emptyList()
-        } catch (e: Exception) { emptyList() }
+        } catch (e: Exception) {
+            android.util.Log.w("GoBirdie", "Geometry lookup failed for '${item.name}', saving without map data: ${e.javaClass.simpleName}: ${e.message}", e)
+            emptyList()
+        }
         // If Overpass has geometry, trust its hole count (e.g. 9-hole courses the API lists as 18)
         val holeCount = if (overpassHoles.isNotEmpty()) overpassHoles.size else apiHoles.size
         val holes = apiHoles.take(holeCount).map { h ->
@@ -220,18 +236,19 @@ class StartRoundViewModel @Inject constructor(
             )
         }
         return Course(
-            id = "api-${item.id}",
+            id = "api-$apiId",
             name = item.name,
             location = item.location,
             holes = holes,
             downloadedAt = Instant.now().toString(),
-            golfCourseApiId = item.id,
+            golfCourseApiId = apiId,
         )
     }
 
     private fun formatDistance(from: GpsPoint, to: GpsPoint): String {
         val miles = from.distanceMeters(to) / 1609.34
-        return if (miles < 0.1) "< 0.1 mi" else "%.1f mi".format(miles)
+        return if (miles < 0.1) context.getString(R.string.distance_under_tenth_mi)
+        else context.getString(R.string.distance_mi, miles)
     }
 
     private fun stableId(courseId: String): Int {

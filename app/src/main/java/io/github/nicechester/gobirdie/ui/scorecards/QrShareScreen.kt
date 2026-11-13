@@ -12,6 +12,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import io.github.nicechester.gobirdie.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,9 +82,9 @@ fun QrShareScreen(round: Round, onDismiss: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Share Score") },
+                title = { Text(stringResource(R.string.qr_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, "Close") }
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, stringResource(R.string.common_close)) }
                 },
             )
         }
@@ -101,7 +103,7 @@ fun QrShareScreen(round: Round, onDismiss: () -> Unit) {
             ) {
                 Image(
                     bitmap = qrBitmap.asImageBitmap(),
-                    contentDescription = "QR code for ${round.courseName}",
+                    contentDescription = stringResource(R.string.qr_content_desc, round.courseName),
                     modifier = Modifier
                         .padding(16.dp)
                         .fillMaxWidth()
@@ -124,7 +126,7 @@ fun QrShareScreen(round: Round, onDismiss: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "${round.totalStrokes} strokes",
+                stringResource(R.string.strokes_count, round.totalStrokes),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = androidx.compose.ui.graphics.Color(0xFF2E7D32),
@@ -133,7 +135,7 @@ fun QrShareScreen(round: Round, onDismiss: () -> Unit) {
             Spacer(Modifier.height(32.dp))
 
             Text(
-                "Have the tournament host scan this code",
+                stringResource(R.string.qr_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

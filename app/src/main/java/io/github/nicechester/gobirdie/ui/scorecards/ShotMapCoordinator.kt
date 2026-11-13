@@ -2,6 +2,7 @@ package io.github.nicechester.gobirdie.ui.scorecards
 
 import android.content.Context
 import android.graphics.*
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.*
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -224,7 +225,7 @@ class ShotMapCoordinator(private val context: Context) {
             courseHole?.greenCenter?.let { green ->
                 val imgKey = "putt-$putts"
                 if (style.getImage(imgKey) == null)
-                    style.addImage(imgKey, makeLabelBitmap("$putts putts", Color.rgb(46, 125, 50)))
+                    style.addImage(imgKey, makeLabelBitmap(context.getString(R.string.putts_count, putts), Color.rgb(46, 125, 50)))
                 style.addSource(GeoJsonSource("shot-putt-label-src", featureCollection(JSONArray().put(JSONObject().apply {
                     put("type", "Feature")
                     put("geometry", JSONObject().apply {

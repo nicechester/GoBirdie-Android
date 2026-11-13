@@ -11,5 +11,6 @@ data class Course(
     val holes: List<Hole> = emptyList(),
     @SerialName("downloaded_at") val downloadedAt: String = "", // ISO-8601
     @SerialName("osm_version") val osmVersion: Int = 0,
-    @SerialName("golf_course_api_id") val golfCourseApiId: Int? = null,
+    @Serializable(with = FlexibleIdSerializer::class)
+    @SerialName("golf_course_api_id") val golfCourseApiId: String? = null,
 )

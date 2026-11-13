@@ -6,6 +6,7 @@ import io.github.nicechester.gobirdie.core.model.Hole
 import io.github.nicechester.gobirdie.core.model.HoleGeometry
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import android.util.Log
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -22,13 +23,20 @@ data class CourseSearchResult(
     val osmId: Long,
 )
 
+private const val TAG = "GoBirdie"
+
 class OverpassClient {
 
-    private val baseUrl = "https://overpass-api.de/api/interpreter"
+    // Primary first, then public mirrors. Tried in order, one attempt each.
+    private val endpoints = listOf(
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+    )
     private val json = Json { ignoreUnknownKeys = true }
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        // Overpass can take 30s+ under load but still succeed; a short read timeout turns those into failures.
+        .readTimeout(2, TimeUnit.MINUTES)
         .build()
 
     @Volatile
@@ -44,9 +52,10 @@ class OverpassClient {
             (node["leisure"="golf_course"];way["leisure"="golf_course"];relation["leisure"="golf_course"];);
             out center;
         """.trimIndent()
+        Log.d(TAG, "searchCourses radius=${radiusMeters}m center=${location.lat},${location.lon}")
         val data = post(query)
         val resp = json.decodeFromString(OverpassResponse.serializer(), data)
-        return resp.elements
+        val results = resp.elements
             .filter { it.tags?.get("name") != null }
             .map { el ->
                 val loc = el.center ?: GpsPoint(el.lat ?: 0.0, el.lon ?: 0.0)
@@ -54,6 +63,8 @@ class OverpassClient {
             }
             .sortedBy { it.location.distanceMeters(location) }
             .take(20)
+        Log.d(TAG, "searchCourses found ${results.size} named golf courses: ${results.map { it.name }}")
+        return results
     }
 
     fun downloadCourse(osmId: Long, name: String, playerLocation: GpsPoint? = null): List<Course> {
@@ -120,6 +131,8 @@ class OverpassClient {
         }
 
         val holes = buildHoles(filteredElements, anchor)
+        Log.d(TAG, "downloadCourse osmId=$osmId '$name': ${holeLines.size} hole lines, ${holes.size} holes with geometry " +
+            "(${holes.count { it.greenCenter != null }} greens)")
         return listOf(
             Course(
                 id = "osm-$osmId",
@@ -224,27 +237,42 @@ class OverpassClient {
     private fun centroid(points: List<GpsPoint>) =
         GpsPoint(points.map { it.lat }.average(), points.map { it.lon }.average())
 
-    private fun post(query: String, retries: Int = 3): String {
+    /**
+     * Tries each Overpass server once, in order. A busy or unreachable server (502/503/504/429,
+     * timeouts, network errors) falls through to the next mirror instead of retrying the same one.
+     */
+    private fun post(query: String): String {
         val now = System.currentTimeMillis()
         val wait = minIntervalMs - (now - lastRequestTime)
         if (wait > 0) Thread.sleep(wait)
         lastRequestTime = System.currentTimeMillis()
 
+        var lastError: Exception? = null
+        for (url in endpoints) {
+            try {
+                return postTo(url, query)
+            } catch (e: Exception) {
+                Log.w(TAG, "Overpass failed at $url: ${e.javaClass.simpleName}: ${e.message}")
+                lastError = e
+            }
+        }
+        Log.e(TAG, "Overpass: all endpoints failed", lastError)
+        throw lastError ?: Exception("Overpass unavailable")
+    }
+
+    private fun postTo(url: String, query: String): String {
         val encoded = "data=${java.net.URLEncoder.encode(query, "UTF-8")}"
         val body = encoded.toRequestBody("application/x-www-form-urlencoded".toMediaType())
-        val request = Request.Builder().url(baseUrl).post(body)
+        val request = Request.Builder().url(url).post(body)
             .header("User-Agent", "GoBirdie-Android/1.0")
             .build()
+        val started = System.currentTimeMillis()
         return client.newCall(request).execute().use { resp ->
+            val elapsed = System.currentTimeMillis() - started
+            Log.d(TAG, "Overpass $url -> HTTP ${resp.code} in ${elapsed}ms")
             when (resp.code) {
-                200 -> resp.body?.string() ?: throw Exception("Empty body")
-                406, 429, 502, 503, 504 -> {
-                    if (retries <= 0) throw Exception("Overpass HTTP ${resp.code} after retries")
-                    val backoff = 3000L * (1L shl (3 - retries)) // 3s, 6s, 12s
-                    Thread.sleep(backoff)
-                    post(query, retries - 1)
-                }
-                else -> throw Exception("Overpass HTTP ${resp.code}")
+                200 -> resp.body?.string() ?: throw Exception("Empty body from $url")
+                else -> throw Exception("Overpass HTTP ${resp.code} from $url")
             }
         }
     }

@@ -1,5 +1,6 @@
 package io.github.nicechester.gobirdie.ui.settings
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -17,11 +18,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.nicechester.gobirdie.AppLanguage
 import io.github.nicechester.gobirdie.Config
+import io.github.nicechester.gobirdie.LocaleHelper
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.api.GolfCourseApiClient
+import io.github.nicechester.gobirdie.ui.baselineNameRes
+import io.github.nicechester.gobirdie.ui.clubNameRes
+import io.github.nicechester.gobirdie.ui.teeNameRes
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.GpsPoint
@@ -70,33 +78,37 @@ private fun SettingsMain(
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         // Courses
-        item { SectionHeader("Courses") }
+        item { SectionHeader(stringResource(R.string.settings_courses)) }
         item {
-            SettingsRow(icon = Icons.Default.Map, label = "Manage Courses") { onCourses() }
+            SettingsRow(icon = Icons.Default.Map, label = stringResource(R.string.settings_manage_courses)) { onCourses() }
         }
 
         // Equipment
-        item { SectionHeader("Equipment") }
+        item { SectionHeader(stringResource(R.string.settings_equipment)) }
         item {
-            SettingsRow(icon = Icons.Default.SportsGolf, label = "My Clubs") { onClubs() }
+            SettingsRow(icon = Icons.Default.SportsGolf, label = stringResource(R.string.settings_my_clubs)) { onClubs() }
         }
 
         // Tee
-        item { SectionHeader("Tee") }
+        item { SectionHeader(stringResource(R.string.settings_tee)) }
         item {
             SettingsRow(
                 icon = Icons.Default.Circle,
-                label = "Tee Color",
-                trailing = teeColor,
+                label = stringResource(R.string.settings_tee_color),
+                trailing = teeNameRes(teeColor)?.let { stringResource(it) } ?: teeColor,
             ) { showTeePicker = true }
         }
 
         // Insights
-        item { SectionHeader("Insights") }
+        item { SectionHeader(stringResource(R.string.settings_insights)) }
         item { InsightsBaselineRow(prefs) }
 
+        // Language
+        item { SectionHeader(stringResource(R.string.settings_language)) }
+        item { LanguageRow() }
+
         // Desktop Sync
-        item { SectionHeader("Desktop Sync") }
+        item { SectionHeader(stringResource(R.string.settings_desktop_sync)) }
         item {
             Surface(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
@@ -107,9 +119,9 @@ private fun SettingsMain(
                     Icon(Icons.Default.Sync, null, Modifier.size(20.dp), tint = GolfGreen)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Sync Server", style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.settings_sync_server), style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            if (syncEnabled) "Running on port $SYNC_PORT (WiFi only)" else "Off",
+                            if (syncEnabled) stringResource(R.string.settings_sync_running, SYNC_PORT) else stringResource(R.string.settings_sync_off),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -130,14 +142,14 @@ private fun SettingsMain(
         }
 
         // Tip Jar
-        item { SectionHeader("Support Development") }
+        item { SectionHeader(stringResource(R.string.settings_support_development)) }
         item {
             Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), tonalElevation = 1.dp, shape = MaterialTheme.shapes.medium) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("GoBirdie is free with no ads.", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_tip_message), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "If you enjoy the app, consider buying me a drink! 🍺",
+                        stringResource(R.string.settings_tip_cta),
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     Spacer(Modifier.height(12.dp))
@@ -152,7 +164,7 @@ private fun SettingsMain(
         }
         item {
             Text(
-                "Tips help cover development costs and keep the app free.",
+                stringResource(R.string.settings_tip_footer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -160,25 +172,25 @@ private fun SettingsMain(
         }
 
         // About
-        item { SectionHeader("About") }
+        item { SectionHeader(stringResource(R.string.settings_about)) }
         item {
             val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
-            AboutRow("Version", version)
+            AboutRow(stringResource(R.string.settings_version), version)
         }
         item {
             Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp).clickable {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/nicechester/GoBirdie-Android/blob/main/MANUAL.md")))
             }) {
                 Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Manual", style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_manual), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.weight(1f))
                     Icon(Icons.Default.OpenInNew, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
-        item { AboutRow("Map Data", "© OpenStreetMap contributors") }
-        item { AboutRow("Maps", "© MapLibre") }
-        item { AboutRow("License", "© 2026 Chester Kim. All rights reserved.") }
+        item { AboutRow(stringResource(R.string.settings_map_data), "© OpenStreetMap contributors") }
+        item { AboutRow(stringResource(R.string.settings_maps), "© MapLibre") }
+        item { AboutRow(stringResource(R.string.settings_license), "© 2026 Chester Kim. All rights reserved.") }
     }
 
     // Tee color picker dialog
@@ -186,7 +198,7 @@ private fun SettingsMain(
         val teeColors = listOf("Black", "Blue", "White", "Yellow", "Red")
         AlertDialog(
             onDismissRequest = { showTeePicker = false },
-            title = { Text("Tee Color") },
+            title = { Text(stringResource(R.string.settings_tee_color)) },
             text = {
                 Column {
                     teeColors.forEach { color ->
@@ -203,7 +215,7 @@ private fun SettingsMain(
                                 tint = teeDisplayColor(color),
                             )
                             Spacer(Modifier.width(12.dp))
-                            Text(color, style = MaterialTheme.typography.bodyLarge)
+                            Text(teeNameRes(color)?.let { stringResource(it) } ?: color, style = MaterialTheme.typography.bodyLarge)
                             Spacer(Modifier.weight(1f))
                             if (color == teeColor) {
                                 Icon(Icons.Default.Check, null, tint = GolfGreen)
@@ -236,14 +248,14 @@ private fun InsightsBaselineRow(prefs: android.content.SharedPreferences) {
 
     SettingsRow(
         icon = Icons.Default.Insights,
-        label = "SG Baseline",
-        trailing = selected.displayName,
+        label = stringResource(R.string.settings_sg_baseline),
+        trailing = stringResource(baselineNameRes(selected)),
     ) { showPicker = true }
 
     if (showPicker) {
         AlertDialog(
             onDismissRequest = { showPicker = false },
-            title = { Text("SG Baseline") },
+            title = { Text(stringResource(R.string.settings_sg_baseline)) },
             text = {
                 Column {
                     SGBaseline.entries.forEach { baseline ->
@@ -257,7 +269,7 @@ private fun InsightsBaselineRow(prefs: android.content.SharedPreferences) {
                                 .padding(vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(baseline.displayName, style = MaterialTheme.typography.bodyLarge)
+                            Text(stringResource(baselineNameRes(baseline)), style = MaterialTheme.typography.bodyLarge)
                             Spacer(Modifier.weight(1f))
                             if (baseline == selected) {
                                 Icon(Icons.Default.Check, null, tint = GolfGreen)
@@ -266,10 +278,59 @@ private fun InsightsBaselineRow(prefs: android.content.SharedPreferences) {
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Insights compare your round against this benchmark.",
+                        stringResource(R.string.settings_sg_baseline_footer),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            },
+            confirmButton = {},
+        )
+    }
+}
+
+/** Endonyms (English, 한국어, …) stay as-is; only the "System Default" entry is translated. */
+@Composable
+private fun languageLabel(lang: AppLanguage): String =
+    if (lang == AppLanguage.SYSTEM) stringResource(R.string.language_system) else lang.displayName
+
+@Composable
+private fun LanguageRow() {
+    val context = LocalContext.current
+    val activity = context as Activity
+    var selected by remember { mutableStateOf(LocaleHelper.getSavedLanguage(context)) }
+    var showPicker by remember { mutableStateOf(false) }
+
+    SettingsRow(
+        icon = Icons.Default.Language,
+        label = stringResource(R.string.settings_language),
+        trailing = languageLabel(selected),
+    ) { showPicker = true }
+
+    if (showPicker) {
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = { Text(stringResource(R.string.settings_language)) },
+            text = {
+                Column {
+                    AppLanguage.entries.forEach { lang ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clickable {
+                                    selected = lang
+                                    LocaleHelper.setLanguage(activity, lang)
+                                    showPicker = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(languageLabel(lang), style = MaterialTheme.typography.bodyLarge)
+                            Spacer(Modifier.weight(1f))
+                            if (lang == selected) {
+                                Icon(Icons.Default.Check, null, tint = GolfGreen)
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {},
@@ -349,21 +410,21 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
             }
-            Text("Courses", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.courses_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         // Search bar
         OutlinedTextField(
             value = searchText,
             onValueChange = { searchText = it },
-            placeholder = { Text("Search courses to download") },
+            placeholder = { Text(stringResource(R.string.courses_search_placeholder)) },
             leadingIcon = { Icon(Icons.Default.Search, null) },
             trailingIcon = {
                 if (searchText.isNotEmpty()) {
                     IconButton(onClick = { searchText = ""; searchResults = emptyList() }) {
-                        Icon(Icons.Default.Clear, "Clear")
+                        Icon(Icons.Default.Clear, stringResource(R.string.common_clear))
                     }
                 }
             },
@@ -385,16 +446,16 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                             searchResults = results.map { r ->
                                 SearchResult(id = r.id, name = r.name, city = r.city, location = r.location)
                             }
-                            if (results.isEmpty()) errorMessage = "No courses found for \"${searchText.trim()}\""
+                            if (results.isEmpty()) errorMessage = context.getString(R.string.courses_no_results, searchText.trim())
                         } catch (e: Exception) {
-                            errorMessage = "Search failed: ${e.message}"
+                            errorMessage = context.getString(R.string.courses_search_failed, e.message)
                         }
                         isSearching = false
                     }
                 },
                 modifier = Modifier.padding(horizontal = 16.dp),
             ) {
-                Text("Search", color = GolfGreen)
+                Text(stringResource(R.string.courses_search), color = GolfGreen)
             }
         }
 
@@ -417,7 +478,7 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
 
             // Search results
             if (searchResults.isNotEmpty()) {
-                item { SectionHeader("Search Results") }
+                item { SectionHeader(stringResource(R.string.courses_search_results)) }
                 items(searchResults, key = { it.id }) { result ->
                     val alreadySaved = savedCourses.any { it.golfCourseApiId == result.id }
                     Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), tonalElevation = 1.dp, shape = MaterialTheme.shapes.medium) {
@@ -449,24 +510,40 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                                                     val nearby = overpass.searchCourses(result.location, 5000)
                                                     val match = nearby.firstOrNull { it.name.equals(result.name, ignoreCase = true) }
                                                         ?: nearby.firstOrNull()
+                                                    android.util.Log.d("GoBirdie", "Manage Courses '${result.name}' at ${result.location.lat},${result.location.lon}: " +
+                                                        "nearby=${nearby.map { it.name }} match=${match?.name}")
                                                     match?.let { overpass.downloadCourse(it.osmId, it.name) }
-                                                } catch (e: Exception) { null }
+                                                } catch (e: Exception) {
+                                                    android.util.Log.w("GoBirdie", "Geometry lookup failed for '${result.name}', saving without map data: ${e.javaClass.simpleName}: ${e.message}", e)
+                                                    null
+                                                }
                                             }
                                             val overpassHoles = overpassCourses?.firstOrNull()?.holes ?: emptyList()
-                                            val holes = apiHoles.map { h ->
-                                                val gpsHole = overpassHoles.firstOrNull { it.number == h.number }
-                                                io.github.nicechester.gobirdie.core.model.Hole(
-                                                    id = java.util.UUID.randomUUID().toString(),
-                                                    number = h.number,
-                                                    par = h.par,
-                                                    handicap = h.handicap,
-                                                    yardage = h.yardage.toString(),
-                                                    tee = gpsHole?.tee,
-                                                    greenCenter = gpsHole?.greenCenter,
-                                                    greenFront = gpsHole?.greenFront,
-                                                    greenBack = gpsHole?.greenBack,
-                                                    geometry = gpsHole?.geometry,
-                                                )
+                                            android.util.Log.d("GoBirdie", "Manage Courses '${result.name}': ${apiHoles.size} API holes, ${overpassHoles.size} Overpass holes")
+                                            // Overpass defines the hole layout when it returns holes, matching Start Round.
+                                            // The API may list a different hole count (e.g. 9 holes listed as 18), so its
+                                            // par/yardage/handicap are applied to Overpass holes by number.
+                                            val apiByNumber = apiHoles.associateBy { it.number }
+                                            val holes = if (overpassHoles.isNotEmpty()) {
+                                                overpassHoles.map { gps ->
+                                                    val api = apiByNumber[gps.number]
+                                                    gps.copy(
+                                                        id = java.util.UUID.randomUUID().toString(),
+                                                        par = api?.par ?: gps.par,
+                                                        handicap = api?.handicap ?: gps.handicap,
+                                                        yardage = api?.yardage?.toString(),
+                                                    )
+                                                }
+                                            } else {
+                                                apiHoles.map { h ->
+                                                    io.github.nicechester.gobirdie.core.model.Hole(
+                                                        id = java.util.UUID.randomUUID().toString(),
+                                                        number = h.number,
+                                                        par = h.par,
+                                                        handicap = h.handicap,
+                                                        yardage = h.yardage.toString(),
+                                                    )
+                                                }
                                             }
                                             val courseLocation = overpassCourses?.firstOrNull()?.location ?: GpsPoint(0.0, 0.0)
                                             val course = Course(
@@ -479,12 +556,12 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                                             courseStore.save(course)
                                             savedCourses = courseStore.loadAll()
                                         } catch (e: Exception) {
-                                            errorMessage = "Download failed: ${e.message}"
+                                            errorMessage = context.getString(R.string.courses_download_failed, e.message)
                                         }
                                         downloadingId = null
                                     }
                                 }) {
-                                    Icon(Icons.Default.Download, "Download", tint = GolfGreen)
+                                    Icon(Icons.Default.Download, stringResource(R.string.common_download), tint = GolfGreen)
                                 }
                             }
                         }
@@ -493,10 +570,10 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
             }
 
             // Saved courses
-            item { SectionHeader("Saved Courses (${savedCourses.size})") }
+            item { SectionHeader(stringResource(R.string.courses_saved, savedCourses.size)) }
             if (savedCourses.isEmpty()) {
                 item {
-                    Text("No courses downloaded yet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
+                    Text(stringResource(R.string.courses_no_courses), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
                 }
             }
             items(savedCourses, key = { it.id }) { course ->
@@ -522,7 +599,7 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                         Column(Modifier.padding(16.dp)) {
                             Text(course.name, style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                "${course.holes.size} holes",
+                                stringResource(R.string.courses_holes, course.holes.size),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -534,7 +611,7 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
     }
 }
 
-private data class SearchResult(val id: Int, val name: String, val city: String, val location: GpsPoint = GpsPoint(0.0, 0.0))
+private data class SearchResult(val id: String, val name: String, val city: String, val location: GpsPoint = GpsPoint(0.0, 0.0))
 
 // ─── My Clubs ───────────────────────────────────────────────────────
 
@@ -560,9 +637,9 @@ private fun MyClubsScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
             }
-            Text("My Clubs", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.clubs_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
 
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
@@ -575,7 +652,7 @@ private fun MyClubsScreen(onBack: () -> Unit) {
                     shape = MaterialTheme.shapes.medium,
                 ) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(club.displayName, style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(clubNameRes(club)), style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.weight(1f))
                         if (enabled) {
                             Icon(Icons.Default.Check, null, tint = GolfGreen)
@@ -586,7 +663,7 @@ private fun MyClubsScreen(onBack: () -> Unit) {
 
             item {
                 Text(
-                    "Selected clubs appear in the Mark Shot picker during a round.",
+                    stringResource(R.string.clubs_footer),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp),
@@ -601,7 +678,7 @@ private fun MyClubsScreen(onBack: () -> Unit) {
                     },
                     modifier = Modifier.padding(horizontal = 16.dp),
                 ) {
-                    Text("Reset to Default")
+                    Text(stringResource(R.string.clubs_reset))
                 }
             }
         }

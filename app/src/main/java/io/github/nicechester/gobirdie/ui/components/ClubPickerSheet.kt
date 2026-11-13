@@ -12,11 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.ClubType
+import io.github.nicechester.gobirdie.ui.clubNameRes
 import kotlinx.coroutines.launch
 
 private val GolfGreen = Color(0xFF2E7D32)
@@ -52,12 +55,12 @@ fun ClubPickerSheet(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = onCancel) { Text("Cancel") }
-            Text("Select Club", style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.common_cancel)) }
+            Text(stringResource(R.string.round_select_club), style = MaterialTheme.typography.titleMedium)
             TextButton(onClick = {
                 onSelect(enabledClubs.getOrElse(selectedIndex) { defaultClub })
             }) {
-                Text("Confirm", color = GolfGreen, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.common_confirm), color = GolfGreen, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -88,7 +91,7 @@ fun ClubPickerSheet(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            club.displayName,
+                            stringResource(clubNameRes(club)),
                             style = if (isSelected) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.bodyLarge,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) GolfGreen else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),

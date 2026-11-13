@@ -1,4 +1,300 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GoBirdie</string>
+
+    <!-- Tabs -->
+    <string name="tab_round">Round</string>
+    <string name="tab_scorecards">Scorecards</string>
+    <string name="tab_map">Map</string>
+    <string name="tab_settings">Settings</string>
+
+    <!-- Settings -->
+    <string name="settings_courses">Courses</string>
+    <string name="settings_manage_courses">Manage Courses</string>
+    <string name="settings_equipment">Equipment</string>
+    <string name="settings_my_clubs">My Clubs</string>
+    <string name="settings_tee">Tee</string>
+    <string name="settings_tee_color">Tee Color</string>
+    <string name="settings_insights">Insights</string>
+    <string name="settings_sg_baseline">SG Baseline</string>
+    <string name="settings_sg_baseline_footer">Insights compare your round against this benchmark.</string>
+    <string name="settings_desktop_sync">Desktop Sync</string>
+    <string name="settings_sync_server">Sync Server</string>
+    <string name="settings_sync_running">Running on port %d (WiFi only)</string>
+    <string name="settings_sync_off">Off</string>
+    <string name="settings_support_development">Support Development</string>
+    <string name="settings_tip_message">GoBirdie is free with no ads.</string>
+    <string name="settings_tip_cta">If you enjoy the app, consider buying me a drink! 🍺</string>
+    <string name="settings_tip_footer">Tips help cover development costs and keep the app free.</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_manual">Manual</string>
+    <string name="settings_map_data">Map Data</string>
+    <string name="settings_maps">Maps</string>
+    <string name="settings_license">License</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_footer">Choose your preferred language for the app.</string>
+
+    <!-- Languages -->
+    <string name="language_system">System Default</string>
+    <string name="language_en">English</string>
+    <string name="language_ko">한국어</string>
+    <string name="language_es">Español</string>
+    <string name="language_ja">日本語</string>
+
+    <!-- Tee Colors -->
+    <string name="tee_black">Black</string>
+    <string name="tee_blue">Blue</string>
+    <string name="tee_white">White</string>
+    <string name="tee_yellow">Yellow</string>
+    <string name="tee_red">Red</string>
+
+    <!-- SG Baselines -->
+    <string name="baseline_scratch">Scratch</string>
+    <string name="baseline_single">Single Digit</string>
+    <string name="baseline_bogey">Bogey Golfer</string>
+    <string name="baseline_high_cap">High Handicap</string>
+
+    <!-- Courses -->
+    <string name="courses_title">Courses</string>
+    <string name="courses_search_placeholder">Search courses to download</string>
+    <string name="courses_search">Search</string>
+    <string name="courses_search_results">Search Results</string>
+    <string name="courses_no_courses">No courses downloaded yet</string>
+    <string name="courses_no_results">No courses found for \"%s\"</string>
+    <string name="courses_search_failed">Search failed: %s</string>
+    <string name="courses_download_failed">Download failed: %s</string>
+    <string name="courses_saved">Saved Courses (%d)</string>
+    <string name="courses_holes">%d holes</string>
+
+    <!-- My Clubs -->
+    <string name="clubs_title">My Clubs</string>
+    <string name="clubs_footer">Selected clubs appear in the Mark Shot picker during a round.</string>
+    <string name="clubs_reset">Reset to Default</string>
+
+    <!-- Club Names -->
+    <string name="club_unknown">Unknown</string>
+    <string name="club_driver">Driver</string>
+    <string name="club_md">Mini Driver</string>
+    <string name="club_3w">3 Wood</string>
+    <string name="club_5w">5 Wood</string>
+    <string name="club_7w">7 Wood</string>
+    <string name="club_9w">9 Wood</string>
+    <string name="club_3h">3 Hybrid</string>
+    <string name="club_4h">4 Hybrid</string>
+    <string name="club_5h">5 Hybrid</string>
+    <string name="club_4i">4 Iron</string>
+    <string name="club_5i">5 Iron</string>
+    <string name="club_6i">6 Iron</string>
+    <string name="club_7i">7 Iron</string>
+    <string name="club_8i">8 Iron</string>
+    <string name="club_9i">9 Iron</string>
+    <string name="club_pw">Pitching Wedge</string>
+    <string name="club_gw">Gap Wedge</string>
+    <string name="club_sw">Sand Wedge</string>
+    <string name="club_lw">Lob Wedge</string>
+    <string name="club_putter">Putter</string>
+
+    <!-- Round -->
+    <string name="round_title">Round</string>
+    <string name="round_no_active">No Active Round</string>
+    <string name="round_start">Start a Round</string>
+    <string name="round_start_description">Start a round to track distances\nand mark your shots</string>
+    <string name="round_hole">Hole %d</string>
+    <string name="round_par">Par %d</string>
+    <string name="round_hole_par_yards">Hole %1$d  Par %2$d  %3$d yds</string>
+    <string name="round_start_on_hole">Start on Hole %d</string>
+    <string name="round_which_hole">Which hole are you starting on?</string>
+    <string name="round_mark_shot">Mark Shot</string>
+    <string name="round_strokes">Strokes</string>
+    <string name="round_putts">Putts</string>
+    <string name="round_penalty">Penalty</string>
+    <string name="round_scorecard">SCORECARD</string>
+    <string name="round_total">Total</string>
+    <string name="round_tot">Tot</string>
+    <string name="round_plus_minus">+/−</string>
+    <string name="round_pen">Pen</string>
+    <string name="round_select_club">Select Club</string>
+    <string name="round_move_shots_to">Move Shots to Hole…</string>
+    <string name="round_sync_watch">Sync Watch</string>
+    <string name="round_end">End Round</string>
+    <string name="round_cancel">Cancel Round</string>
+    <string name="round_save_finish">Save and finish this round?</string>
+    <string name="round_finish">Finish</string>
+    <string name="round_next">Next</string>
+    <string name="round_prev">Prev</string>
+
+    <!-- Distance -->
+    <string name="distance_front">Front</string>
+    <string name="distance_flag">Flag</string>
+    <string name="distance_back">Back</string>
+    <string name="distance_yds">yds</string>
+
+    <!-- Scorecards -->
+    <string name="scorecards_title">Scorecards</string>
+    <string name="scorecards_rounds">Rounds</string>
+    <string name="scorecards_tournaments">Tournaments</string>
+    <string name="scorecards_no_scorecards">No Scorecards</string>
+    <string name="scorecards_no_scorecards_desc">Completed rounds will appear here</string>
+
+    <!-- Insights -->
+    <string name="insights_title">💡 Key Insights</string>
+    <string name="insights_vs_baseline">vs %s</string>
+
+    <!-- Common -->
+    <string name="common_done">Done</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="common_confirm">Confirm</string>
+    <string name="common_edit">Edit</string>
+    <string name="common_add">Add</string>
+    <string name="common_delete">Delete</string>
+    <string name="common_save">Save</string>
+    <string name="common_back">Back</string>
+    <string name="common_clear">Clear</string>
+    <string name="common_download">Download</string>
+
+    <!-- Shared -->
+    <string name="common_retry">Retry</string>
+    <string name="common_close">Close</string>
+    <string name="common_name">Name</string>
+    <string name="common_unknown_error">Unknown error</string>
+    <string name="strokes_count">%d strokes</string>
+    <string name="putts_count">%d putts</string>
+
+    <!-- Round -->
+    <string name="round_resume_title">Resume Round?</string>
+    <string name="round_resume_message">You have an unfinished round at %s. Resume where you left off?</string>
+    <string name="round_resume">Resume</string>
+    <string name="round_discard">Discard</string>
+    <string name="round_still_playing">Still Playing?</string>
+    <string name="round_still_playing_message">No activity detected for 30 minutes. Are you still playing?</string>
+    <string name="round_yes_continue">Yes, Continue</string>
+    <string name="round_start_button">Start Round</string>
+    <string name="round_hole_par">Hole %1$d  (Par %2$d)</string>
+    <string name="round_move_shots_title">Move Shots to Hole</string>
+    <string name="round_end_confirm_title">End Round?</string>
+    <string name="round_end_action">End</string>
+    <string name="round_tournament_created">Tournament created for %s</string>
+    <string name="shot_add_here">Add Shot Here?</string>
+    <string name="shot_delete_confirm">Delete this shot?</string>
+    <string name="shot_club">Club</string>
+    <string name="shot_deselect">Deselect</string>
+    <string name="shot_move">Move</string>
+    <string name="shot_reorder">Reorder</string>
+    <string name="shot_reorder_title">Reorder Shots</string>
+    <string name="shot_tap_select">Tap a shot to select</string>
+    <string name="shot_tap_map_add">Tap map to add shot</string>
+    <string name="shot_tap_pin_select">Tap pin to select</string>
+
+    <!-- Start round -->
+    <string name="start_discover">Discover nearby courses</string>
+    <string name="start_finding_location">Finding your location...</string>
+    <string name="start_search_placeholder">Search by name</string>
+    <string name="start_no_courses">No courses found</string>
+    <string name="start_downloading">Downloading %s...</string>
+    <string name="distance_mi">%.1f mi</string>
+    <string name="distance_under_tenth_mi">&lt; 0.1 mi</string>
+
+    <!-- Map -->
+    <string name="map_explore_title">Explore Courses</string>
+    <string name="map_explore_desc">View course layouts without tracking a round</string>
+    <string name="map_start_exploring">Start Exploring</string>
+    <string name="map_pick_another">Pick Another Course</string>
+    <string name="hole_hcp">HCP %s</string>
+
+    <!-- Scorecards -->
+    <string name="stat_holes_played">Holes Played</string>
+    <string name="scorecards_front9">Front 9</string>
+    <string name="scorecards_back9">Back 9</string>
+    <string name="scorecards_shot_map">Shot Map</string>
+    <string name="scorecards_hole_summary">Par %1$d  ·  %2$d strokes  ·  %3$d putts</string>
+
+    <!-- Share / scan -->
+    <string name="qr_title">Share Score</string>
+    <string name="qr_content_desc">QR code for %s</string>
+    <string name="qr_hint">Have the tournament host scan this code</string>
+    <string name="scan_title">Scan Score</string>
+    <string name="scan_camera_unavailable">Camera unavailable</string>
+    <string name="scan_hint">Point camera at a GoBirdie QR code</string>
+    <string name="scan_permission_required">Camera permission required</string>
+    <string name="scan_grant">Grant Permission</string>
+    <string name="scan_error_unavailable">Camera not available: %s</string>
+    <string name="scan_error_start">Failed to start camera: %s</string>
+    <string name="scan_rescan">Re-scan</string>
+
+    <!-- Players -->
+    <string name="player_add">Add Player</string>
+    <string name="player_name_title">Player Name</string>
+    <string name="player_name_label">Player name</string>
+    <string name="player_rename">Rename Player</string>
+    <string name="player_scan_qr">Scan QR Code</string>
+
+    <!-- Tournaments -->
+    <string name="tournaments_empty">No Tournaments</string>
+    <string name="tournaments_empty_desc">Tap + to create one</string>
+    <string name="tournaments_rename">Rename Tournament</string>
+    <string name="tournament_live">Live</string>
+    <string name="tournament_no_players">No players yet. Tap + to add.</string>
+    <string name="tournament_new">New Tournament</string>
+    <string name="tournament_create">Create</string>
+    <string name="tournament_course">Course</string>
+    <string name="tournament_select_course">Select a course…</string>
+    <string name="tournament_select_course_title">Select Course</string>
+    <string name="tournament_date_label">Date (yyyy-MM-dd)</string>
+    <string name="tournament_title_label">Title (optional)</string>
+    <string name="tournament_title_placeholder">e.g. Saturday Scramble</string>
+    <string name="tournament_no_courses">No saved courses. Download a course first.</string>
+    <plurals name="tournament_players">
+        <item quantity="one">%d player</item>
+        <item quantity="other">%d players</item>
+    </plurals>
+
+    <!-- Round insights (templates; args are pre-formatted by the engine) -->
+    <string name="insight_sg_putting_critical">Putting was the biggest hole in your scorecard — you lost %s strokes on the greens. Speed control on long putts is the quickest fix.</string>
+    <string name="insight_sg_approach_critical">Approach play was your Achilles heel — %s strokes lost into the green. Distance control and iron accuracy need work.</string>
+    <string name="insight_sg_off_tee_critical">Tee shots were a major problem — %s strokes lost off the tee. Consider trading distance for accuracy on tight holes.</string>
+    <string name="insight_sg_short_game_critical">Your short game lost you %s strokes. Getting up-and-down more consistently is the fastest way to lower your score.</string>
+    <string name="insight_sg_putting_strong">The putter was on fire — %s strokes gained on the greens. Your pace control and green reading were excellent.</string>
+    <string name="insight_sg_approach_strong">Ball striking was excellent — %s strokes gained on approach shots. That kind of iron play creates birdie looks.</string>
+    <string name="insight_sg_total_positive">Overall you gained %s strokes vs your baseline — a genuinely strong all-around performance.</string>
+    <string name="insight_fir_low_gir">Hit %1$s%% of fairways but only %2$s%% of greens — your driving sets up good positions but the irons aren\'t converting.</string>
+    <string name="insight_low_fir_high_gir">Only %1$s%% fairways but %2$s%% GIR — impressive recovery iron play. Cleaning up tee shots would make you even more dangerous.</string>
+    <string name="insight_three_putts_critical">%s three-putts — each one is a stroke wasted. Getting the first putt within 3 feet eliminates the damage.</string>
+    <string name="insight_three_putts_warning">%s three-putts today. Lag putting distance control from long range needs attention.</string>
+    <string name="insight_good_scrambling">Only %1$s%% GIR but scrambled %2$s%% — your short game saved several strokes and kept the score respectable.</string>
+    <string name="insight_poor_scrambling">Missed %1$s%% of greens and only scrambled %2$s%% — short game is costing you 4-5 strokes per round.</string>
+    <string name="insight_front_back_worse">Front %1$s, back %2$s — a %3$s shot drop-off. Fatigue or concentration may be fading late.</string>
+    <string name="insight_front_back_better">Strong finish — improved %1$s shots from front (%2$s) to back (%3$s).</string>
+    <string name="insight_par3_struggles">Par 3s averaged +%s over par — iron accuracy from the tee needs attention on short holes.</string>
+    <string name="insight_par5_scoring">Par 5s averaged +%s — not capitalizing on scoring holes. Better course management could unlock birdies.</string>
+    <string name="insight_par5_birdie_machine">Par 5s are your scoring holes — averaging %s today. Your length and course management there is a real strength.</string>
+    <string name="insight_consecutive_bogeys">%s bogeys in a row — bad streaks often snowball from one poor shot. A reset routine between holes is key.</string>
+    <string name="insight_hr_late_round">HR climbed %s bpm from front to back nine — fatigue or pressure may have been a factor in the later holes.</string>
+    <string name="insight_worst_club">Your %1$s was your weakest club — avg SG %2$s over %3$s shots. Targeted practice with this club would pay dividends.</string>
+    <string name="insight_best_club">Your %1$s was dialed in — %2$s avg SG over %3$s shots. That\'s a club you can trust under pressure.</string>
+    <string name="insight_driver_inconsistent">Driver distance was all over the place (±%s yds) — focus on center contact over maximum distance for more consistency.</string>
+    <string name="insight_one_putts_high">%s one-putts today — you were holing out from close range consistently. That\'s a real scoring asset.</string>
+    <string name="insight_zero_three_putts">Zero three-putts — lag putting distance control was excellent. Great green reading and pace judgment.</string>
+    <string name="insight_longest_drive">Longest drive: %s yards — great power off the tee.</string>
+    <string name="insight_driver_down_vs_history">Avg driver distance was ~%s yards shorter than your recent average. Check if fatigue or swing changes are affecting your power.</string>
+    <string name="insight_driver_up_vs_history">Avg driver distance was ~%s yards longer than your recent average — you were swinging well today.</string>
+    <string name="insight_approach_worse_vs_history">Approaches averaged ~%s yards farther from the pin than your recent average — irons weren\'t as sharp today.</string>
+    <string name="insight_approach_better_vs_history">Approaches averaged ~%s yards closer to the pin than your recent average — irons were dialed in today.</string>
+    <string name="insight_round_duration_long">The round took %s minutes — mental fatigue over 4+ hours can affect decision-making on the back nine.</string>
+
+    <!-- Accessibility labels -->
+    <string name="a11y_menu">Menu</string>
+    <string name="a11y_undo">Undo</string>
+    <string name="a11y_minus">Minus</string>
+    <string name="a11y_plus">Plus</string>
+    <string name="common_saved">Saved</string>
+    <string name="a11y_previous">Previous</string>
+    <string name="a11y_next">Next</string>
+    <string name="map_edit_shots_title">Hole %1$d · Edit Shots</string>
+    <string name="a11y_move_up">Move up</string>
+    <string name="a11y_move_down">Move down</string>
+    <string name="scorecards_start_tournament">Start Tournament</string>
+    <string name="common_hole">Hole</string>
+    <string name="common_par">Par</string>
+    <string name="start_search_failed">Couldn\'t search nearby courses. Saved courses are still available.</string>
 </resources>
