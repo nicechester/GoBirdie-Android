@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.github.nicechester.gobirdie.AppState
+import io.github.nicechester.gobirdie.LocaleHelper
 import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.*
 import io.github.nicechester.gobirdie.ui.clubNameRes
@@ -53,6 +54,7 @@ import org.maplibre.android.maps.Style
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlin.math.*
 
 private val GolfGreen = Color(0xFF2E7D32)
@@ -158,7 +160,7 @@ private fun RoundRow(round: Round, modifier: Modifier = Modifier, onClick: () ->
         Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(round.courseName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                Text(formatDate(round.startedAt), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(formatDate(round.startedAt, LocaleHelper.currentLocale(LocalContext.current)), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("${round.totalStrokes}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -258,7 +260,7 @@ private fun ScorecardDetail(
         ) {
             // Date
             Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text("📅 ${formatDate(currentRound.startedAt)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("📅 ${formatDate(currentRound.startedAt, LocaleHelper.currentLocale(LocalContext.current))}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
 
             // Front 9
@@ -414,11 +416,11 @@ private fun StatRow(label: String, value: String) {
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
-private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a")
-
-private fun formatDate(iso: String): String =
+// Uses the app's language (from Configuration), not the JVM default, so the date matches the UI strings.
+private fun formatDate(iso: String, locale: Locale): String =
     runCatching {
-        Instant.parse(iso).atZone(ZoneId.systemDefault()).format(dateFormatter)
+        Instant.parse(iso).atZone(ZoneId.systemDefault())
+            .format(DateTimeFormatter.ofPattern("MMM d, yyyy h:mm a", locale))
     }.getOrDefault(iso)
 
 // ─── Shot Map Screen ────────────────────────────────────────────────

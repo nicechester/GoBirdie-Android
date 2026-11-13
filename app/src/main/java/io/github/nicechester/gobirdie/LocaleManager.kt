@@ -32,6 +32,11 @@ object LocaleHelper {
         return AppLanguage.fromCode(code)
     }
 
+    /** The locale the app's text uses: the saved in-app language, or the system locale for "System Default". */
+    fun currentLocale(context: Context): Locale =
+        getSavedLanguage(context).code?.let { Locale.forLanguageTag(it) }
+            ?: context.resources.configuration.locales[0]
+
     /**
      * Applies the saved in-app language to a base context.
      * Android 13+ handles this via LocaleManager (per-app locales), so only
