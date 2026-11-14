@@ -86,6 +86,13 @@ class OsmStaticIndex(private val cacheFile: File, private val http: OkHttpClient
             .map { it.first }
     }
 
+    /** Every unique course in the index, for name search. */
+    @Synchronized
+    fun uniqueEntries(): List<OsmIndexEntry> {
+        entries()
+        return byOsmId.values.toList()
+    }
+
     /** The region file for the entry nearest [location]. Used to pick the region to cache. */
     @Synchronized
     fun regionNear(location: GpsPoint): String? =

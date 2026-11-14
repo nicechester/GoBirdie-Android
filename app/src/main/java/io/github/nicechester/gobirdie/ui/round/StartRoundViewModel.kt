@@ -178,6 +178,30 @@ class StartRoundViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val loc = playerLocation ?: GpsPoint(34.0, -118.0)
+
+                // Static index first: covers every course in the data. GolfCourseAPI only when it has no match.
+                val staticHits = try {
+                    osm.search(query, loc)
+                } catch (e: Exception) {
+                    android.util.Log.w("GoBirdie", "[OSM] name search '$query' failed: ${e.message}", e)
+                    emptyList()
+                }
+                android.util.Log.d("GoBirdie", "[OSM] name search '$query': ${staticHits.size} index hits")
+                if (staticHits.isNotEmpty()) {
+                    val items = staticHits.map { e ->
+                        val point = GpsPoint(e.lat!!, e.lon!!)
+                        CourseItem(
+                            id = -((e.osmId.hashCode() and 0x7fffffff).coerceAtLeast(1)),
+                            name = e.name, location = point, city = e.city,
+                            isSaved = false,
+                            distanceText = formatDistance(point, loc),
+                            osmKey = e.osmId,
+                        )
+                    }
+                    _state.value = StartRoundUiState.CourseList(items, isSearchingOnline = false)
+                    return@launch
+                }
+
                 val results = golfApi.searchCourses(query, loc)
                 val items = results.map { r ->
                     CourseItem(

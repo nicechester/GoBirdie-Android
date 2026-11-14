@@ -296,4 +296,7 @@
     <string name="common_hole">홀</string>
     <string name="common_par">파</string>
     <string name="start_search_failed">주변 코스를 검색하지 못했습니다. 저장된 코스는 계속 사용할 수 있습니다.</string>
+    <string name="courses_clear_temp_files">임시 파일 삭제</string>
+    <string name="courses_clear_temp_files_footer">현재 지역의 캐시된 지도 데이터를 삭제합니다. 다운로드한 코스는 유지됩니다.</string>
+    <string name="courses_cleared_message">캐시된 지도 데이터 %1$s를 삭제했습니다.</string>
 </resources>

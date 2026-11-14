@@ -402,6 +402,19 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val apiClient = remember { GolfCourseApiClient(Config.GOLF_COURSE_API_KEY) }
+    val osmSource = remember {
+        io.github.nicechester.gobirdie.core.data.osm.OsmCourseSource(
+            baseDir = java.io.File(context.filesDir, "osm"),
+            indexHttp = okhttp3.OkHttpClient(),
+            regionHttp = okhttp3.OkHttpClient.Builder().readTimeout(5, java.util.concurrent.TimeUnit.MINUTES).build(),
+        )
+    }
+    // Cached map region size for the clear button. Downloads change it, so refresh when saved courses change.
+    var cachedBytes by remember { mutableStateOf(0L) }
+    var clearedMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(savedCourses) {
+        cachedBytes = withContext(Dispatchers.IO) { osmSource.regionCacheBytes() }
+    }
 
     Column(Modifier.fillMaxSize()) {
         // Top bar
@@ -440,13 +453,34 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                     errorMessage = null
                     scope.launch {
                         try {
-                            val results = withContext(Dispatchers.IO) {
-                                apiClient.searchCourses(searchText.trim(), GpsPoint(34.0, -118.0))
+                            val query = searchText.trim()
+                            val loc = GpsPoint(34.0, -118.0)
+                            // Static index first: covers every course in the data. GolfCourseAPI only when it has no match.
+                            val staticHits = withContext(Dispatchers.IO) {
+                                try {
+                                    osmSource.search(query, loc)
+                                } catch (e: Exception) {
+                                    android.util.Log.w("GoBirdie", "[OSM] manage courses name search failed: ${e.message}", e)
+                                    emptyList()
+                                }
                             }
-                            searchResults = results.map { r ->
-                                SearchResult(id = r.id, name = r.name, city = r.city, location = r.location)
+                            android.util.Log.d("GoBirdie", "[OSM] manage courses name search '$query': ${staticHits.size} index hits")
+                            if (staticHits.isNotEmpty()) {
+                                searchResults = staticHits.map { e ->
+                                    SearchResult(
+                                        id = "osm-${e.osmId}", name = e.name, city = e.city,
+                                        location = GpsPoint(e.lat!!, e.lon!!), osmKey = e.osmId,
+                                    )
+                                }
+                            } else {
+                                val results = withContext(Dispatchers.IO) {
+                                    apiClient.searchCourses(query, loc)
+                                }
+                                searchResults = results.map { r ->
+                                    SearchResult(id = r.id, name = r.name, city = r.city, location = r.location)
+                                }
+                                if (results.isEmpty()) errorMessage = context.getString(R.string.courses_no_results, query)
                             }
-                            if (results.isEmpty()) errorMessage = context.getString(R.string.courses_no_results, searchText.trim())
                         } catch (e: Exception) {
                             errorMessage = context.getString(R.string.courses_search_failed, e.message)
                         }
@@ -479,8 +513,9 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
             // Search results
             if (searchResults.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.courses_search_results)) }
-                items(searchResults, key = { it.id }) { result ->
-                    val alreadySaved = savedCourses.any { it.golfCourseApiId == result.id }
+                // Own key namespace: a saved course can also appear in the saved list with the same id.
+                items(searchResults, key = { "result-${it.id}" }) { result ->
+                    val alreadySaved = savedCourses.any { it.id == result.id || it.golfCourseApiId == result.id }
                     Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), tonalElevation = 1.dp, shape = MaterialTheme.shapes.medium) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -500,6 +535,17 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                                     val teeColor = prefs.getString("teeColor", "Blue") ?: "Blue"
                                     scope.launch {
                                         try {
+                                            // Index result: save the static course directly, no GolfCourseAPI call.
+                                            val osmKey = result.osmKey
+                                            if (osmKey != null) {
+                                                val staticCourse = withContext(Dispatchers.IO) {
+                                                    osmSource.loadCourse(osmKey, result.name, result.location)
+                                                } ?: throw Exception("No map data for ${result.name}")
+                                                courseStore.save(staticCourse)
+                                                savedCourses = courseStore.loadAll()
+                                                downloadingId = null
+                                                return@launch
+                                            }
                                             val apiHoles = withContext(Dispatchers.IO) {
                                                 apiClient.fetchHoles(result.id, teeColor.lowercase())
                                             }
@@ -620,11 +666,56 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                     }
                 }
             }
+
+            // Clear temporary files: region cache only. Downloaded courses are kept.
+            item {
+                Spacer(Modifier.height(24.dp))
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            val freed = withContext(Dispatchers.IO) { osmSource.clearRegionCache() }
+                            cachedBytes = withContext(Dispatchers.IO) { osmSource.regionCacheBytes() }
+                            clearedMessage = android.text.format.Formatter.formatShortFileSize(context, freed)
+                        }
+                    },
+                    enabled = cachedBytes > 0,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                ) {
+                    Text(
+                        stringResource(R.string.courses_clear_temp_files),
+                        color = if (cachedBytes > 0) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                    )
+                }
+                Text(
+                    stringResource(R.string.courses_clear_temp_files_footer),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+                clearedMessage?.let { message ->
+                    AlertDialog(
+                        onDismissRequest = { clearedMessage = null },
+                        title = { Text(stringResource(R.string.courses_clear_temp_files)) },
+                        text = { Text(stringResource(R.string.courses_cleared_message, message)) },
+                        confirmButton = {
+                            TextButton(onClick = { clearedMessage = null }) { Text(stringResource(R.string.common_done)) }
+                        },
+                    )
+                }
+            }
         }
     }
 }
 
-private data class SearchResult(val id: String, val name: String, val city: String, val location: GpsPoint = GpsPoint(0.0, 0.0))
+private data class SearchResult(
+    val id: String,
+    val name: String,
+    val city: String,
+    val location: GpsPoint = GpsPoint(0.0, 0.0),
+    /** OSM ID for a course from the static index; null for GolfCourseAPI results. */
+    val osmKey: String? = null,
+)
 
 // ─── My Clubs ───────────────────────────────────────────────────────
 

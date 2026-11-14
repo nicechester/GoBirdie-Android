@@ -49,10 +49,16 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         return target
     }
 
-    /** Deletes the cached region (Settings → Clear temporary files). Downloaded courses are not affected. */
+    /** Bytes used by the cached region. */
     @Synchronized
-    fun clear() {
+    fun sizeBytes(): Long = dir.listFiles()?.sumOf { it.length() } ?: 0L
+
+    /** Deletes the cached region (Settings → Clear temporary files) and returns the bytes freed. Downloaded courses are not affected. */
+    @Synchronized
+    fun clear(): Long {
+        val freed = sizeBytes()
         dir.listFiles()?.forEach { it.delete() }
+        return freed
     }
 
     private fun download(url: String, to: File) {
