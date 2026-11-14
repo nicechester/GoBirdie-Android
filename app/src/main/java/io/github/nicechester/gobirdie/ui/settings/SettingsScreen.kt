@@ -503,8 +503,21 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                                             val apiHoles = withContext(Dispatchers.IO) {
                                                 apiClient.fetchHoles(result.id, teeColor.lowercase())
                                             }
-                                            // Fetch GPS geometry from Overpass by name
-                                            val overpassCourses = withContext(Dispatchers.IO) {
+                                            // Static OSM data first (region file cached on disk). Overpass only if it has no match.
+                                            val staticCourse = withContext(Dispatchers.IO) {
+                                                try {
+                                                    io.github.nicechester.gobirdie.core.data.osm.OsmCourseSource(
+                                                        baseDir = java.io.File(context.filesDir, "osm"),
+                                                        indexHttp = okhttp3.OkHttpClient(),
+                                                        regionHttp = okhttp3.OkHttpClient.Builder()
+                                                            .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES).build(),
+                                                    ).loadNamedNear(result.name, result.location)
+                                                } catch (e: Exception) {
+                                                    android.util.Log.w("GoBirdie", "Static OSM lookup failed for '${result.name}': ${e.message}", e)
+                                                    null
+                                                }
+                                            }
+                                            val overpassCourses = staticCourse?.let { listOf(it) } ?: withContext(Dispatchers.IO) {
                                                 try {
                                                     val overpass = io.github.nicechester.gobirdie.core.data.api.OverpassClient()
                                                     val nearby = overpass.searchCourses(result.location, 5000)
