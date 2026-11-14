@@ -296,4 +296,7 @@
     <string name="common_hole">ホール</string>
     <string name="common_par">パー</string>
     <string name="start_search_failed">近くのコースを検索できませんでした。保存済みのコースは引き続き利用できます。</string>
+    <string name="courses_clear_temp_files">一時ファイルを削除</string>
+    <string name="courses_clear_temp_files_footer">現在の地域のキャッシュされた地図データを削除します。ダウンロード済みのコースは残ります。</string>
+    <string name="courses_cleared_message">キャッシュされた地図データを %1$s 削除しました。</string>
 </resources>

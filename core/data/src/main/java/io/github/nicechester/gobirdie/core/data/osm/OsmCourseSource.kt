@@ -65,7 +65,25 @@ class OsmCourseSource(
     }
 
     /** Settings → Clear temporary files. Removes the cached region only; downloaded courses stay. */
-    fun clearRegionCache() = regions.clear()
+    /**
+     * Name search over the whole index, nearest first. A course matches when its name has every distinctive
+     * word of [name] ("Angeles National" matches "Angeles National Golf Club"). Empty for a query made only
+     * of generic words.
+     */
+    fun search(name: String, location: GpsPoint, limit: Int = 30): List<OsmIndexEntry> {
+        val query = distinctiveWords(name)
+        if (query.isEmpty()) return emptyList()
+        return index.uniqueEntries()
+            .filter { distinctiveWords(it.name).containsAll(query) }
+            .sortedBy { GpsPoint(it.lat!!, it.lon!!).distanceMeters(location) }
+            .take(limit)
+    }
+
+    /** Bytes used by the cached region (0 when nothing is cached). */
+    fun regionCacheBytes(): Long = regions.sizeBytes()
+
+    /** Settings → Clear temporary files. Removes the cached region only. Returns the bytes freed. */
+    fun clearRegionCache(): Long = regions.clear()
 
     private fun distinctiveWords(name: String): Set<String> =
         name.lowercase().split(Regex("[^a-z0-9]+"))
