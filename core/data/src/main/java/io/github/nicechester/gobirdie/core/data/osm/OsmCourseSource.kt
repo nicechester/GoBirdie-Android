@@ -25,10 +25,11 @@ class OsmCourseSource(
         index.nearby(location, radiusMeters)
 
     /**
-     * Geometry for one course. The region comes from the user's location (the index entry nearest the
-     * user), with the course's own region as a fallback. Returns null when neither region has the course.
+     * Geometry for one course, one [Course] per layout (a multi-course complex gives several). The region comes
+     * from the user's location (the index entry nearest the user), with the course's own region as a fallback.
+     * Returns an empty list when neither region has the course.
      */
-    fun loadCourse(osmId: String, name: String, userLocation: GpsPoint): Course? {
+    fun loadCourse(osmId: String, name: String, userLocation: GpsPoint): List<Course> {
         val started = System.currentTimeMillis()
         val ownFile = index.find(osmId)?.file
         val nearbyFile = index.regionNear(userLocation)
@@ -36,13 +37,14 @@ class OsmCourseSource(
         Log.d(TAG, "OSM course $osmId '$name': region from user location=$nearbyFile, course's own=$ownFile")
         for (file in candidates) {
             val gz = regions.ensure(file)
-            regions.extractCourse(gz, osmId, name, userLocation)?.let {
-                Log.d(TAG, "OSM course $osmId '$name': loaded from $file in ${System.currentTimeMillis() - started}ms")
-                return it
+            val courses = regions.extractCourses(gz, osmId, name, userLocation)
+            if (courses.isNotEmpty()) {
+                Log.d(TAG, "OSM course $osmId '$name': ${courses.size} layout(s) from $file in ${System.currentTimeMillis() - started}ms")
+                return courses
             }
         }
         Log.w(TAG, "OSM course $osmId '$name': not in static data after ${System.currentTimeMillis() - started}ms, falling back")
-        return null
+        return emptyList()
     }
 
     /**
@@ -61,10 +63,9 @@ class OsmCourseSource(
         Log.d(TAG, "OSM name lookup '$name' within ${radiusMeters.toInt()}m: ${hits.size} hits, " +
             "match=${match?.name ?: "none"}")
         if (match == null) return null
-        return loadCourse(match.osmId, name, location)
+        return loadCourse(match.osmId, name, location).firstOrNull()
     }
 
-    /** Settings → Clear temporary files. Removes the cached region only; downloaded courses stay. */
     /**
      * Name search over the whole index, nearest first. A course matches when its name has every distinctive
      * word of [name] ("Angeles National" matches "Angeles National Golf Club"). Empty for a query made only

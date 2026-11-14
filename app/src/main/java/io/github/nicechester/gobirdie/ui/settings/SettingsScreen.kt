@@ -515,7 +515,10 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                 item { SectionHeader(stringResource(R.string.courses_search_results)) }
                 // Own key namespace: a saved course can also appear in the saved list with the same id.
                 items(searchResults, key = { "result-${it.id}" }) { result ->
-                    val alreadySaved = savedCourses.any { it.id == result.id || it.golfCourseApiId == result.id }
+                    // Layouts of a complex are saved as "<id>-1", "<id>-2", so match the prefix too.
+                    val alreadySaved = savedCourses.any {
+                        it.id == result.id || it.id.startsWith("${result.id}-") || it.golfCourseApiId == result.id
+                    }
                     Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), tonalElevation = 1.dp, shape = MaterialTheme.shapes.medium) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -538,10 +541,11 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                                             // Index result: save the static course directly, no GolfCourseAPI call.
                                             val osmKey = result.osmKey
                                             if (osmKey != null) {
-                                                val staticCourse = withContext(Dispatchers.IO) {
+                                                val layouts = withContext(Dispatchers.IO) {
                                                     osmSource.loadCourse(osmKey, result.name, result.location)
-                                                } ?: throw Exception("No map data for ${result.name}")
-                                                courseStore.save(staticCourse)
+                                                }.ifEmpty { throw Exception("No map data for ${result.name}") }
+                                                // One course per layout (multi-course complexes give several).
+                                                layouts.forEach { courseStore.save(it) }
                                                 savedCourses = courseStore.loadAll()
                                                 downloadingId = null
                                                 return@launch
