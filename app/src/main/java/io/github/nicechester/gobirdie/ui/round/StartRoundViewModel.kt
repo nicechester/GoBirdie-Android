@@ -10,6 +10,10 @@ import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.data.CourseStore
 import io.github.nicechester.gobirdie.core.data.api.GolfCourseApiClient
 import io.github.nicechester.gobirdie.core.data.api.GolfCourseResult
+import io.github.nicechester.gobirdie.core.data.osm.OsmCourseSource
+import okhttp3.OkHttpClient
+import java.io.File
+import java.util.concurrent.TimeUnit
 import io.github.nicechester.gobirdie.core.data.api.OverpassClient
 import io.github.nicechester.gobirdie.core.model.Course
 import io.github.nicechester.gobirdie.core.model.GpsPoint
@@ -43,6 +47,8 @@ data class CourseItem(
     val distanceText: String?,
     /** golfcourseapi.com string ID; null for OSM/saved-only items. */
     val apiId: String? = null,
+    /** OSM ID from the static index (e.g. "w174533646"); null for other items. */
+    val osmKey: String? = null,
 )
 
 /** Positive list-key derived from a string API ID (OSM items use negative IDs, saved items use stableId). */
@@ -55,6 +61,13 @@ class StartRoundViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val overpass = OverpassClient()
+    private val osm by lazy {
+        OsmCourseSource(
+            baseDir = File(context.filesDir, "osm"),
+            indexHttp = OkHttpClient(),
+            regionHttp = OkHttpClient.Builder().readTimeout(5, TimeUnit.MINUTES).build(),
+        )
+    }
     private val golfApi = GolfCourseApiClient(Config.GOLF_COURSE_API_KEY)
 
     private val _state = MutableStateFlow<StartRoundUiState>(StartRoundUiState.Loading)
@@ -111,18 +124,35 @@ class StartRoundViewModel @Inject constructor(
     private fun searchNearby(location: GpsPoint) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                var results = overpass.searchCourses(location, 15000)
-                if (results.isEmpty()) results = overpass.searchCourses(location, 30000)
                 val current = (_state.value as? StartRoundUiState.CourseList)?.courses ?: emptyList()
-                val newItems = results
-                    .filter { r -> current.none { it.name == r.name } }
-                    .map { r ->
-                        CourseItem(
-                            id = -r.osmId.toInt(), name = r.name, location = r.location, city = "",
-                            isSaved = false,
-                            distanceText = formatDistance(r.location, location),
-                        )
-                    }
+                // Static index first (no live query); Overpass only when the index has nothing nearby.
+                val staticHits = osm.nearby(location, 15_000.0)
+                val newItems = if (staticHits.isNotEmpty()) {
+                    staticHits
+                        .filter { e -> current.none { it.name == e.name } }
+                        .map { e ->
+                            val point = GpsPoint(e.lat!!, e.lon!!)
+                            CourseItem(
+                                id = -((e.osmId.hashCode() and 0x7fffffff).coerceAtLeast(1)),
+                                name = e.name, location = point, city = e.city,
+                                isSaved = false,
+                                distanceText = formatDistance(point, location),
+                                osmKey = e.osmId,
+                            )
+                        }
+                } else {
+                    var results = overpass.searchCourses(location, 15000)
+                    if (results.isEmpty()) results = overpass.searchCourses(location, 30000)
+                    results
+                        .filter { r -> current.none { it.name == r.name } }
+                        .map { r ->
+                            CourseItem(
+                                id = -r.osmId.toInt(), name = r.name, location = r.location, city = "",
+                                isSaved = false,
+                                distanceText = formatDistance(r.location, location),
+                            )
+                        }
+                }
                 val merged = (current + newItems).sortedBy { it.location.distanceMeters(location) }
                 _state.value = StartRoundUiState.CourseList(merged, isSearchingOnline = false)
             } catch (e: Exception) {
@@ -201,6 +231,16 @@ class StartRoundViewModel @Inject constructor(
     }
 
     private suspend fun downloadCourse(item: CourseItem): Course {
+        // Static OSM data first: region file for the user's location, cached on disk.
+        item.osmKey?.let { key ->
+            osm.loadCourse(key, item.name, playerLocation ?: item.location)?.let { return it }
+            // Not in the static data: find it through Overpass near the item.
+            val near = overpass.searchCourses(item.location, 5000)
+            val match = near.firstOrNull { it.name.equals(item.name, ignoreCase = true) } ?: near.firstOrNull()
+                ?: throw Exception("No map data for ${item.name}")
+            return overpass.downloadCourse(match.osmId, item.name, playerLocation).first()
+        }
+
         val osmId = if (item.id < 0) kotlin.math.abs(item.id).toLong() else null
 
         // Try Overpass for OSM courses
