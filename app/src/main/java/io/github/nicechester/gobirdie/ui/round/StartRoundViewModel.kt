@@ -222,6 +222,10 @@ class StartRoundViewModel @Inject constructor(
         // Check cache
         val cacheId = item.apiId?.let { "api-$it" } ?: "osm-${kotlin.math.abs(item.id)}"
         val cached = courseStore.load(cacheId)
+            ?: item.osmKey?.let { key ->
+                // Layouts of a complex are saved as "osm-<key>-1", "osm-<key>-2", so match the ID prefix too.
+                courseStore.loadAll().firstOrNull { it.id == "osm-$key" || it.id.startsWith("osm-$key-") }
+            }
             ?: courseStore.loadAll().firstOrNull { it.name == item.name }
         if (cached != null) {
             _state.value = StartRoundUiState.SelectHole(cached)
@@ -257,7 +261,13 @@ class StartRoundViewModel @Inject constructor(
     private suspend fun downloadCourse(item: CourseItem): Course {
         // Static OSM data first: region file for the user's location, cached on disk.
         item.osmKey?.let { key ->
-            osm.loadCourse(key, item.name, playerLocation ?: item.location)?.let { return it }
+            val layouts = osm.loadCourse(key, item.name, playerLocation ?: item.location)
+            if (layouts.isNotEmpty()) {
+                // A multi-course complex gives one course per layout. Save the others now, so each shows in the
+                // saved list; return the first for this selection.
+                layouts.drop(1).forEach { courseStore.save(it) }
+                return layouts.first()
+            }
             // Not in the static data: find it through Overpass near the item.
             val near = overpass.searchCourses(item.location, 5000)
             val match = near.firstOrNull { it.name.equals(item.name, ignoreCase = true) } ?: near.firstOrNull()

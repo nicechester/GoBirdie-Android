@@ -71,38 +71,39 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
     }
 
     /**
-     * Builds one course from the region file: the course outline is the feature with [osmId], and its
-     * holes, greens, fairways and bunkers are the golf features inside that outline.
-     * Returns null when the outline or any hole isn't in this region.
+     * Builds the courses for [osmId] from the region file. The course outline is the feature with [osmId].
+     * Its holes are the golf features within [MARGIN] degrees of the outline's bounding box, so holes mapped
+     * just outside the club polygon are kept. Hole lines are split into layouts by way-ID gap, so a multi-course
+     * complex (e.g. Brookside) gives one [Course] per layout. Returns an empty list when the outline or its
+     * holes aren't in this region.
      */
-    fun extractCourse(gz: File, osmId: String, name: String, anchor: GpsPoint): Course? {
-        // Pass 1: the course outline.
+    fun extractCourses(gz: File, osmId: String, name: String, anchor: GpsPoint): List<Course> {
+        // Pass 1: the outline, as all of its polygons.
         val pass1 = System.currentTimeMillis()
-        var outline: List<GpsPoint>? = null
+        var outlineRings: List<List<GpsPoint>> = emptyList()
         var outlineName: String? = null
         forEachFeature(gz) { feature ->
             if (feature["id"] == osmId) {
-                outline = outlineOf(feature)
+                outlineRings = geometryOf(feature).filter { it.size >= 3 }
                 outlineName = propertiesOf(feature)["name"] as? String
                 false // found it, stop
             } else {
                 true
             }
         }
-        val ring = outline?.takeIf { it.size >= 3 }
-        if (ring == null) {
+        if (outlineRings.isEmpty()) {
             Log.d(TAG, "OSM region: $osmId not in ${gz.name} (pass 1 ${System.currentTimeMillis() - pass1}ms)")
-            return null
+            return emptyList()
         }
-        Log.d(TAG, "OSM region: outline for $osmId '${outlineName ?: name}' with ${ring.size} points " +
-            "(pass 1 ${System.currentTimeMillis() - pass1}ms)")
+        val outlinePoints = outlineRings.flatten()
+        Log.d(TAG, "OSM region: outline for $osmId '${outlineName ?: name}' with ${outlinePoints.size} points " +
+            "in ${outlineRings.size} polygon(s) (pass 1 ${System.currentTimeMillis() - pass1}ms)")
 
-        // Pass 2: golf features that start inside the outline (plus a small margin).
-        val pad = 0.002
-        val minLat = ring.minOf { it.lat } - pad
-        val maxLat = ring.maxOf { it.lat } + pad
-        val minLon = ring.minOf { it.lon } - pad
-        val maxLon = ring.maxOf { it.lon } + pad
+        // Pass 2: golf features that start within MARGIN of the outline's bounds.
+        val minLat = outlinePoints.minOf { it.lat } - MARGIN
+        val maxLat = outlinePoints.maxOf { it.lat } + MARGIN
+        val minLon = outlinePoints.minOf { it.lon } - MARGIN
+        val maxLon = outlinePoints.maxOf { it.lon } + MARGIN
 
         val holeLines = mutableListOf<Feature>()
         val greens = mutableListOf<Polygon>()
@@ -117,8 +118,9 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
                 val parts = geometryOf(feature)
                 val first = parts.firstOrNull()?.firstOrNull()
                 if (first != null && first.lat in minLat..maxLat && first.lon in minLon..maxLon) {
+                    val id = feature["id"] as? String ?: ""
                     when (golf) {
-                        "hole" -> if (parts.isNotEmpty() && parts[0].size >= 2) holeLines.add(Feature(props, parts[0]))
+                        "hole" -> if (parts.isNotEmpty() && parts[0].size >= 2) holeLines.add(Feature(id, props, parts[0]))
                         "green" -> greens.addAll(parts.filter { it.size >= 3 })
                         "fairway" -> fairways.addAll(parts.filter { it.size >= 3 })
                         "bunker" -> bunkers.addAll(parts.filter { it.size >= 3 })
@@ -128,27 +130,68 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
             true
         }
 
-        Log.d(TAG, "OSM region: pass 2 ${System.currentTimeMillis() - pass2}ms inside outline: " +
+        Log.d(TAG, "OSM region: pass 2 ${System.currentTimeMillis() - pass2}ms near outline: " +
             "${holeLines.size} hole lines, ${greens.size} greens, ${fairways.size} fairways, ${bunkers.size} bunkers")
 
-        val holes = buildHoles(holeLines, greens, fairways, bunkers, anchor)
-        if (holes.isEmpty()) {
-            Log.w(TAG, "OSM region: no holes built for $osmId")
-            return null
+        // Layouts of a complex. Preferred: the golf:course:name tag on each hole (e.g. "C.W. Koiner Course").
+        // Fallback: one layout per duplicate hole ref, split by way-ID gap.
+        val tagged = holeLines.isNotEmpty() && holeLines.all { it.props["golf:course:name"] is String }
+        val layouts: List<Pair<String?, List<Feature>>> = if (tagged) {
+            holeLines.groupBy { it.props["golf:course:name"] as String }.map { (layoutName, lines) -> layoutName to lines }
+        } else {
+            val layoutCount = holeLines.mapNotNull { it.props["ref"]?.toString()?.toIntOrNull() }
+                .groupingBy { it }.eachCount().values.maxOrNull() ?: 1
+            splitByWayGap(holeLines, layoutCount).map { null to it }
         }
-        Log.d(TAG, "OSM region: built ${holes.size} holes for $osmId " +
-            "(${holes.count { it.greenCenter != null && it.greenFront != null }} with green geometry)")
+        val courseName = outlineName ?: name
+        val center = centroid(outlinePoints)
 
-        return Course(
-            id = "osm-$osmId",
-            name = outlineName ?: name,
-            location = centroid(ring),
-            holes = holes,
-            downloadedAt = Instant.now().toString(),
-        )
+        val courses = layouts.mapIndexedNotNull { idx, (layoutName, group) ->
+            val holes = buildHoles(group, greens, fairways, bunkers, anchor)
+            if (holes.isEmpty()) return@mapIndexedNotNull null
+            val multi = layouts.size > 1
+            Log.d(TAG, "OSM region: layout ${idx + 1} '${layoutName ?: "-"}' of $osmId has ${holes.size} holes")
+            Course(
+                id = if (multi) "osm-$osmId-${idx + 1}" else "osm-$osmId",
+                // "Club – Layout", e.g. "Brookside Golf Club – C.W. Koiner Course"
+                name = when {
+                    !multi -> courseName
+                    layoutName != null -> "$courseName – $layoutName"
+                    else -> "$courseName #${idx + 1}"
+                },
+                location = center,
+                holes = holes,
+                downloadedAt = Instant.now().toString(),
+            )
+        }
+        if (courses.isEmpty()) Log.w(TAG, "OSM region: no holes built for $osmId")
+        return courses
     }
 
-    // MARK: - Hole building (same rules as the Overpass path)
+    // MARK: - Layouts and hole building (same rules as the Overpass path)
+
+    /** Splits hole lines into [layouts] groups at the largest gaps in OSM way IDs, as the Overpass path does. */
+    private fun splitByWayGap(lines: List<Feature>, layouts: Int): List<List<Feature>> {
+        if (layouts <= 1 || lines.size < 2) return listOf(lines)
+        val ordered = lines.sortedBy { wayNumber(it.id) }
+        val cuts = (1 until ordered.size)
+            .map { i -> i to (wayNumber(ordered[i].id) - wayNumber(ordered[i - 1].id)) }
+            .sortedByDescending { it.second }
+            .take(layouts - 1)
+            .map { it.first }
+            .sorted()
+        val groups = mutableListOf<List<Feature>>()
+        var start = 0
+        for (cut in cuts) {
+            groups += ordered.subList(start, cut)
+            start = cut
+        }
+        groups += ordered.subList(start, ordered.size)
+        return groups
+    }
+
+    /** The number in an OSM id, e.g. "w1116223984" -> 1116223984. */
+    private fun wayNumber(id: String): Long = id.filter { it.isDigit() }.toLongOrNull() ?: 0L
 
     private fun buildHoles(
         holeLines: List<Feature>,
@@ -157,7 +200,7 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         bunkers: List<Polygon>,
         anchor: GpsPoint,
     ): List<Hole> {
-        // One line per hole number; keep the way whose tee is closest to the anchor.
+        // One line per hole number within a layout; keep the way whose tee is closest to the anchor.
         val byRef = LinkedHashMap<Int, Feature>()
         for (line in holeLines) {
             val ref = line.props["ref"]?.toString()?.toIntOrNull() ?: continue
@@ -204,7 +247,7 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
 
     // MARK: - Streaming read
 
-    private class Feature(val props: Map<String, Any?>, val points: List<GpsPoint>)
+    private class Feature(val id: String, val props: Map<String, Any?>, val points: List<GpsPoint>)
 
     /** Visits each feature of the FeatureCollection. [visit] returns false to stop early. */
     private fun forEachFeature(gz: File, visit: (Map<String, Any?>) -> Boolean) {
@@ -279,9 +322,6 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         }
     }
 
-    /** The outline of a course feature: the first ring. */
-    private fun outlineOf(feature: Map<String, Any?>): List<GpsPoint>? = geometryOf(feature).firstOrNull()
-
     private fun pointsOf(ring: List<*>): List<GpsPoint> = ring.mapNotNull { p ->
         val c = p as? List<*> ?: return@mapNotNull null
         val lon = c.getOrNull(0) as? Double ?: return@mapNotNull null
@@ -296,5 +336,8 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         private const val TAG = "GoBirdie"
         private const val RELEASE_BASE ="https://github.com/nicechester/osm-golf-courses/releases/latest/download/"
         private val GOLF_KINDS = setOf("hole", "green", "fairway", "bunker")
+
+        /** Degrees (about 660 m) a hole may start outside the outline's bounds. Larger values pull in nearby courses. */
+        private const val MARGIN = 0.006
     }
 }
