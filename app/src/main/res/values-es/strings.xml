@@ -300,4 +300,12 @@
     <string name="courses_clear_temp_files">Borrar archivos temporales</string>
     <string name="courses_clear_temp_files_footer">Elimina los datos de mapa en caché de tu región. Los campos descargados se conservan.</string>
     <string name="courses_cleared_message">Se han borrado %1$s de datos de mapa en caché.</string>
+    <string name="settings_handedness">Mano dominante</string>
+    <string name="settings_handedness_right">Diestro</string>
+    <string name="settings_handedness_left">Zurdo</string>
+    <string name="ask_ai_action">Preguntar a la IA</string>
+    <string name="ai_prompt_copied">¡Prompt de Coaching IA Copiado!</string>
+    <string name="ai_prompt_instructions">Pega el prompt en ChatGPT o Gemini para recibir feedback de coaching personalizado.</string>
+    <string name="ai_open_chatgpt">Abrir ChatGPT</string>
+    <string name="ai_open_gemini">Abrir Gemini</string>
 </resources>

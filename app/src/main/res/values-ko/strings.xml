@@ -299,4 +299,12 @@
     <string name="courses_clear_temp_files">임시 파일 삭제</string>
     <string name="courses_clear_temp_files_footer">현재 지역의 캐시된 지도 데이터를 삭제합니다. 다운로드한 코스는 유지됩니다.</string>
     <string name="courses_cleared_message">캐시된 지도 데이터 %1$s를 삭제했습니다.</string>
+    <string name="settings_handedness">타격 방향</string>
+    <string name="settings_handedness_right">오른손잡이</string>
+    <string name="settings_handedness_left">왼손잡이</string>
+    <string name="ask_ai_action">AI에게 묻기</string>
+    <string name="ai_prompt_copied">AI 코칭 프롬프트 복사됨!</string>
+    <string name="ai_prompt_instructions">ChatGPT 또는 Gemini에 붙여넣어 맞춤형 코칭 피드백을 받으세요.</string>
+    <string name="ai_open_chatgpt">ChatGPT 열기</string>
+    <string name="ai_open_gemini">Gemini 열기</string>
 </resources>

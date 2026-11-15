@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -172,6 +173,14 @@ private fun RoundRow(round: Round, modifier: Modifier = Modifier, onClick: () ->
 
 // ─── Scorecard Detail ───────────────────────────────────────────────
 
+/** Opens a web page in the browser (used by the Ask AI dialog for ChatGPT and Gemini). */
+private fun openUrl(context: android.content.Context, url: String) {
+    context.startActivity(
+        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ScorecardDetail(
@@ -187,6 +196,11 @@ private fun ScorecardDetail(
         val prefs = context.getSharedPreferences("gobirdie_settings", android.content.Context.MODE_PRIVATE)
         val name = prefs.getString("sgBaseline", SGBaseline.BOGEY.name) ?: SGBaseline.BOGEY.name
         SGBaseline.entries.firstOrNull { it.name == name } ?: SGBaseline.BOGEY
+    }
+    var showAiPromptCopied by remember { mutableStateOf(false) }
+    val handedness = remember {
+        context.getSharedPreferences("gobirdie_settings", android.content.Context.MODE_PRIVATE)
+            .getString("handedness", "right") ?: "right"
     }
     val playedHoles = currentRound.holes.filter { it.strokes > 0 }
     val parTotal = playedHoles.sumOf { it.par }
@@ -234,6 +248,27 @@ private fun ScorecardDetail(
         return
     }
 
+    if (showAiPromptCopied) {
+        // Same flow as iOS: the prompt is copied, then the user can open ChatGPT or Gemini to paste it.
+        AlertDialog(
+            onDismissRequest = { showAiPromptCopied = false },
+            title = { Text(stringResource(R.string.ai_prompt_copied)) },
+            text = { Text(stringResource(R.string.ai_prompt_instructions)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showAiPromptCopied = false
+                    openUrl(context, "https://chat.openai.com")
+                }) { Text(stringResource(R.string.ai_open_chatgpt)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showAiPromptCopied = false
+                    openUrl(context, "https://gemini.google.com")
+                }) { Text(stringResource(R.string.ai_open_gemini)) }
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -247,6 +282,21 @@ private fun ScorecardDetail(
                         appState.selectTournament(t.id)
                     }) {
                         Icon(Icons.Default.EmojiEvents, stringResource(R.string.scorecards_start_tournament))
+                    }
+                    IconButton(onClick = {
+                        val prompt = io.github.nicechester.gobirdie.core.model.AIPromptBuilder.build(
+                            round = currentRound,
+                            course = course,
+                            handicap = sgBaseline.displayName,
+                            handedness = handedness,
+                            language = io.github.nicechester.gobirdie.LocaleHelper.currentLocale(context).language,
+                        )
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Ask AI", prompt))
+                        showAiPromptCopied = true
+                    }) {
+                        Icon(Icons.Default.AutoAwesome, stringResource(R.string.ask_ai_action))
                     }
                     IconButton(onClick = { showQrShare = true }) {
                         Icon(Icons.Default.QrCode, stringResource(R.string.qr_title))

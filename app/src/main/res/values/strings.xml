@@ -300,4 +300,12 @@
     <string name="courses_clear_temp_files">Clear temporary files</string>
     <string name="courses_clear_temp_files_footer">Removes cached map data for your region. Downloaded courses are kept.</string>
     <string name="courses_cleared_message">Cleared %1$s of cached map data.</string>
+    <string name="settings_handedness">Handedness</string>
+    <string name="settings_handedness_right">Right-handed</string>
+    <string name="settings_handedness_left">Left-handed</string>
+    <string name="ask_ai_action">Ask AI</string>
+    <string name="ai_prompt_copied">AI Coaching Prompt Copied!</string>
+    <string name="ai_prompt_instructions">Paste the prompt into ChatGPT or Gemini for personalized coaching feedback.</string>
+    <string name="ai_open_chatgpt">Open ChatGPT</string>
+    <string name="ai_open_gemini">Open Gemini</string>
 </resources>

@@ -74,6 +74,8 @@ private fun SettingsMain(
     val prefs = remember { context.getSharedPreferences("gobirdie_settings", Context.MODE_PRIVATE) }
     var teeColor by remember { mutableStateOf(prefs.getString("teeColor", "Blue") ?: "Blue") }
     var showTeePicker by remember { mutableStateOf(false) }
+    var handedness by remember { mutableStateOf(prefs.getString("handedness", "right") ?: "right") }
+    var showHandPicker by remember { mutableStateOf(false) }
     var syncEnabled by remember { mutableStateOf(syncManager.isRunning) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
@@ -97,6 +99,18 @@ private fun SettingsMain(
                 label = stringResource(R.string.settings_tee_color),
                 trailing = teeNameRes(teeColor)?.let { stringResource(it) } ?: teeColor,
             ) { showTeePicker = true }
+        }
+
+        // Handedness (used in the Ask AI prompt)
+        item { SectionHeader(stringResource(R.string.settings_handedness)) }
+        item {
+            SettingsRow(
+                icon = Icons.Default.Person,
+                label = stringResource(R.string.settings_handedness),
+                trailing = stringResource(
+                    if (handedness == "left") R.string.settings_handedness_left else R.string.settings_handedness_right
+                ),
+            ) { showHandPicker = true }
         }
 
         // Insights
@@ -194,6 +208,37 @@ private fun SettingsMain(
     }
 
     // Tee color picker dialog
+    if (showHandPicker) {
+        AlertDialog(
+            onDismissRequest = { showHandPicker = false },
+            title = { Text(stringResource(R.string.settings_handedness)) },
+            text = {
+                Column {
+                    listOf(
+                        "right" to R.string.settings_handedness_right,
+                        "left" to R.string.settings_handedness_left,
+                    ).forEach { (value, labelRes) ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                handedness = value
+                                prefs.edit().putString("handedness", value).apply()
+                                showHandPicker = false
+                            }.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(stringResource(labelRes), style = MaterialTheme.typography.bodyLarge)
+                            Spacer(Modifier.weight(1f))
+                            if (value == handedness) {
+                                Icon(Icons.Default.Check, null, tint = GolfGreen)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+        )
+    }
+
     if (showTeePicker) {
         val teeColors = listOf("Black", "Blue", "White", "Yellow", "Red")
         AlertDialog(
