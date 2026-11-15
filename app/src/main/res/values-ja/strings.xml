@@ -299,4 +299,12 @@
     <string name="courses_clear_temp_files">一時ファイルを削除</string>
     <string name="courses_clear_temp_files_footer">現在の地域のキャッシュされた地図データを削除します。ダウンロード済みのコースは残ります。</string>
     <string name="courses_cleared_message">キャッシュされた地図データを %1$s 削除しました。</string>
+    <string name="settings_handedness">利き手</string>
+    <string name="settings_handedness_right">右利き</string>
+    <string name="settings_handedness_left">左利き</string>
+    <string name="ask_ai_action">AIに質問</string>
+    <string name="ai_prompt_copied">AI コーチングのプロンプトをコピーしました！</string>
+    <string name="ai_prompt_instructions">プロンプトを ChatGPT または Gemini に貼り付けると、パーソナライズされたコーチングのフィードバックが得られます。</string>
+    <string name="ai_open_chatgpt">ChatGPT を開く</string>
+    <string name="ai_open_gemini">Gemini を開く</string>
 </resources>
