@@ -308,4 +308,9 @@
     <string name="ai_prompt_instructions">Paste the prompt into ChatGPT or Gemini for personalized coaching feedback.</string>
     <string name="ai_open_chatgpt">Open ChatGPT</string>
     <string name="ai_open_gemini">Open Gemini</string>
+    <string name="layout_pick_prompt">Choose one layout for 9 holes, or two for 18 holes</string>
+    <string name="layout_holes">%d holes</string>
+    <string name="layout_start_9">Start 9 holes</string>
+    <string name="layout_start_18">Start 18 holes</string>
+    <string name="layout_choose">Choose a layout</string>
 </resources>

@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -19,10 +20,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.nicechester.gobirdie.R
 import io.github.nicechester.gobirdie.core.model.Course
+import io.github.nicechester.gobirdie.core.model.CourseLayouts
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,6 +125,10 @@ fun StartRoundScreen(
                     Text(stringResource(R.string.start_downloading, s.name))
                 }
 
+                is StartRoundUiState.SelectLayouts -> {
+                    LayoutPicker(s.layouts) { picked -> viewModel.pickLayouts(picked) }
+                }
+
                 is StartRoundUiState.SelectHole -> {
                     HolePicker(s.course) { hole ->
                         viewModel.confirmStart(s.course, hole)
@@ -161,6 +169,86 @@ private fun CourseRow(course: CourseItem, onClick: () -> Unit) {
                 Icon(Icons.Default.CheckCircle, stringResource(R.string.common_saved), tint = Color(0xFF2E7D32))
             }
         }
+    }
+}
+
+/**
+ * Picks the layouts of a multi-course complex: one for a 9-hole round, two for an 18-hole round.
+ * The first layout picked is holes 1–9. Used by both start round and course explore.
+ */
+@Composable
+private fun LayoutPicker(layouts: List<Course>, onPick: (List<Course>) -> Unit) {
+    var pickedIds by remember { mutableStateOf(listOf<String>()) }
+    val picked = pickedIds.mapNotNull { id -> layouts.firstOrNull { it.id == id } }
+
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.layout_pick_prompt),
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+
+        LazyColumn(Modifier.weight(1f)) {
+            items(layouts, key = { it.id }) { layout ->
+                val order = pickedIds.indexOf(layout.id)
+                Surface(
+                    Modifier.fillMaxWidth().padding(vertical = 2.dp).clickable {
+                        pickedIds = when {
+                            order >= 0 -> pickedIds - layout.id
+                            pickedIds.size < 2 -> pickedIds + layout.id
+                            else -> pickedIds
+                        }
+                    },
+                    shape = MaterialTheme.shapes.small,
+                    tonalElevation = if (order >= 0) 4.dp else 0.dp,
+                    color = if (order >= 0) MaterialTheme.colorScheme.primaryContainer
+                    else MaterialTheme.colorScheme.surface,
+                ) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(CourseLayouts.layoutName(layout.name), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.layout_holes, layout.holes.size),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (order >= 0) {
+                            Surface(shape = CircleShape, color = Color(0xFF2E7D32)) {
+                                Text(
+                                    "${order + 1}",
+                                    Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = { onPick(picked) },
+            enabled = picked.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth().height(48.dp).semantics { testTag = "startLayoutsButton" },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+        ) {
+            Text(
+                stringResource(
+                    when (picked.size) {
+                        2 -> R.string.layout_start_18
+                        1 -> R.string.layout_start_9
+                        else -> R.string.layout_choose
+                    }
+                )
+            )
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
 

@@ -307,4 +307,9 @@
     <string name="ai_prompt_instructions">ChatGPT 또는 Gemini에 붙여넣어 맞춤형 코칭 피드백을 받으세요.</string>
     <string name="ai_open_chatgpt">ChatGPT 열기</string>
     <string name="ai_open_gemini">Gemini 열기</string>
+    <string name="layout_pick_prompt">1개 코스는 9홀, 2개 코스는 18홀로 선택하세요</string>
+    <string name="layout_holes">%d홀</string>
+    <string name="layout_start_9">9홀 시작</string>
+    <string name="layout_start_18">18홀 시작</string>
+    <string name="layout_choose">코스를 선택하세요</string>
 </resources>

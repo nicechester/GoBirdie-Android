@@ -16,6 +16,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import io.github.nicechester.gobirdie.core.data.api.OverpassClient
 import io.github.nicechester.gobirdie.core.model.Course
+import io.github.nicechester.gobirdie.core.model.CourseLayouts
 import io.github.nicechester.gobirdie.core.model.GpsPoint
 import io.github.nicechester.gobirdie.core.model.Hole
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,8 @@ sealed class StartRoundUiState {
     ) : StartRoundUiState()
     data class Downloading(val name: String) : StartRoundUiState()
     data class SelectHole(val course: Course) : StartRoundUiState()
+    /** A multi-course complex: pick one layout (9 holes) or two (18 holes). */
+    data class SelectLayouts(val layouts: List<Course>) : StartRoundUiState()
     data class Error(val message: String) : StartRoundUiState()
 }
 
@@ -219,29 +222,56 @@ class StartRoundViewModel @Inject constructor(
     }
 
     fun selectCourse(item: CourseItem) {
-        // Check cache
-        val cacheId = item.apiId?.let { "api-$it" } ?: "osm-${kotlin.math.abs(item.id)}"
-        val cached = courseStore.load(cacheId)
-            ?: item.osmKey?.let { key ->
-                // Layouts of a complex are saved as "osm-<key>-1", "osm-<key>-2", so match the ID prefix too.
-                courseStore.loadAll().firstOrNull { it.id == "osm-$key" || it.id.startsWith("osm-$key-") }
-            }
-            ?: courseStore.loadAll().firstOrNull { it.name == item.name }
-        if (cached != null) {
-            _state.value = StartRoundUiState.SelectHole(cached)
+        val cached = cachedLayouts(item)
+        if (cached.isNotEmpty()) {
+            _state.value = presentLayouts(cached)
             return
         }
 
         _state.value = StartRoundUiState.Downloading(item.name)
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val course = downloadCourse(item)
-                courseStore.save(course)
-                _state.value = StartRoundUiState.SelectHole(course)
+                val layouts = downloadCourse(item)
+                layouts.forEach { courseStore.save(it) }
+                _state.value = presentLayouts(layouts)
             } catch (e: Exception) {
                 _state.value = StartRoundUiState.Error(context.getString(R.string.courses_download_failed, e.message))
             }
         }
+    }
+
+    /** One course goes straight to the hole picker. Several layouts of a complex show the layout picker first. */
+    private fun presentLayouts(layouts: List<Course>): StartRoundUiState =
+        if (layouts.size > 1) StartRoundUiState.SelectLayouts(layouts)
+        else StartRoundUiState.SelectHole(layouts.first())
+
+    /**
+     * Saved courses for [item]: every layout of a complex ("osm-<key>-1", "osm-<key>-2", …; combined courses
+     * with "+" in the ID are skipped), or the single saved course. Empty when nothing is saved.
+     */
+    private fun cachedLayouts(item: CourseItem): List<Course> {
+        item.osmKey?.let { key ->
+            val layouts = courseStore.loadAll()
+                .filter { (it.id == "osm-$key" || it.id.startsWith("osm-$key-")) && !it.id.contains("+") }
+                .sortedBy { it.id }
+            if (layouts.isNotEmpty()) return layouts
+        }
+        val cacheId = item.apiId?.let { "api-$it" } ?: "osm-${kotlin.math.abs(item.id)}"
+        courseStore.load(cacheId)?.let { return listOf(it) }
+        return courseStore.loadAll().firstOrNull { it.name == item.name }?.let { listOf(it) } ?: emptyList()
+    }
+
+    /**
+     * One layout plays as-is. Two layouts are combined into one 18-hole course, saved so it shows in the saved list.
+     */
+    fun pickLayouts(layouts: List<Course>) {
+        if (layouts.size == 1) {
+            _state.value = StartRoundUiState.SelectHole(layouts[0])
+            return
+        }
+        val combined = CourseLayouts.combine(layouts) ?: return
+        courseStore.save(combined)
+        _state.value = StartRoundUiState.SelectHole(combined)
     }
 
     fun confirmStart(course: Course, startingHole: Int) {
@@ -258,29 +288,24 @@ class StartRoundViewModel @Inject constructor(
         loadWithLocation(playerLocation)
     }
 
-    private suspend fun downloadCourse(item: CourseItem): Course {
+    /** All courses for [item]: one per layout of a complex, or a single course. */
+    private suspend fun downloadCourse(item: CourseItem): List<Course> {
         // Static OSM data first: region file for the user's location, cached on disk.
         item.osmKey?.let { key ->
             val layouts = osm.loadCourse(key, item.name, playerLocation ?: item.location)
-            if (layouts.isNotEmpty()) {
-                // A multi-course complex gives one course per layout. Save the others now, so each shows in the
-                // saved list; return the first for this selection.
-                layouts.drop(1).forEach { courseStore.save(it) }
-                return layouts.first()
-            }
+            if (layouts.isNotEmpty()) return layouts
             // Not in the static data: find it through Overpass near the item.
             val near = overpass.searchCourses(item.location, 5000)
             val match = near.firstOrNull { it.name.equals(item.name, ignoreCase = true) } ?: near.firstOrNull()
                 ?: throw Exception("No map data for ${item.name}")
-            return overpass.downloadCourse(match.osmId, item.name, playerLocation).first()
+            return overpass.downloadCourse(match.osmId, item.name, playerLocation)
         }
 
         val osmId = if (item.id < 0) kotlin.math.abs(item.id).toLong() else null
 
         // Try Overpass for OSM courses
         if (osmId != null) {
-            val courses = overpass.downloadCourse(osmId, item.name, playerLocation)
-            return courses.first()
+            return overpass.downloadCourse(osmId, item.name, playerLocation)
         }
 
         // For API courses, fetch hole data + Overpass GPS geometry
@@ -309,13 +334,15 @@ class StartRoundViewModel @Inject constructor(
                 geometry = gpsHole?.geometry,
             )
         }
-        return Course(
-            id = "api-$apiId",
-            name = item.name,
-            location = item.location,
-            holes = holes,
-            downloadedAt = Instant.now().toString(),
-            golfCourseApiId = apiId,
+        return listOf(
+            Course(
+                id = "api-$apiId",
+                name = item.name,
+                location = item.location,
+                holes = holes,
+                downloadedAt = Instant.now().toString(),
+                golfCourseApiId = apiId,
+            )
         )
     }
 
