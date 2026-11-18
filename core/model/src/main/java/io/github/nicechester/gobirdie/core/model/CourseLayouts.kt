@@ -28,6 +28,15 @@ object CourseLayouts {
         )
     }
 
+    /** Club key for a course ID: "osm-<key>-<n>" (one layout of a complex) -> "osm-<key>"; other IDs unchanged, combined "+" IDs use the first layout. */
+    fun complexKey(id: String): String {
+        val working = id.substringBefore("+")
+        val parts = working.split("-")
+        return if (parts.size == 3 && parts[0] == "osm" && parts[1].isNotEmpty() &&
+            parts[2].isNotEmpty() && parts[2].all { it.isDigit() }
+        ) "osm-${parts[1]}" else working
+    }
+
     /** "Temecula Creek Inn Golf Course – Creek" -> "Temecula Creek Inn Golf Course" */
     fun clubName(name: String): String = name.substringBefore(" – ")
 

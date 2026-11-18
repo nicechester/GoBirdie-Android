@@ -308,8 +308,8 @@
     <string name="ai_open_chatgpt">ChatGPT を開く</string>
     <string name="ai_open_gemini">Gemini を開く</string>
     <string name="layout_pick_prompt">1コースは9ホール、2コースは18ホールを選択</string>
+    <string name="layout_pick_prompt_one">プレーするコースを選択</string>
     <string name="layout_holes">%dホール</string>
-    <string name="layout_start_9">9ホールでスタート</string>
-    <string name="layout_start_18">18ホールでスタート</string>
+    <string name="layout_start_n">%dホールでスタート</string>
     <string name="layout_choose">コースを選択</string>
 </resources>

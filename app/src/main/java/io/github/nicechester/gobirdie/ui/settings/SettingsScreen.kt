@@ -32,6 +32,7 @@ import io.github.nicechester.gobirdie.ui.clubNameRes
 import io.github.nicechester.gobirdie.ui.teeNameRes
 import io.github.nicechester.gobirdie.core.model.ClubType
 import io.github.nicechester.gobirdie.core.model.Course
+import io.github.nicechester.gobirdie.core.model.CourseLayouts
 import io.github.nicechester.gobirdie.core.model.GpsPoint
 import io.github.nicechester.gobirdie.core.model.SGBaseline
 import io.github.nicechester.gobirdie.sync.SyncManager
@@ -461,6 +462,8 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
         cachedBytes = withContext(Dispatchers.IO) { osmSource.regionCacheBytes() }
     }
 
+    val savedClubs = savedClubsOf(savedCourses)
+
     Column(Modifier.fillMaxSize()) {
         // Top bar
         Row(
@@ -560,9 +563,9 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                 item { SectionHeader(stringResource(R.string.courses_search_results)) }
                 // Own key namespace: a saved course can also appear in the saved list with the same id.
                 items(searchResults, key = { "result-${it.id}" }) { result ->
-                    // Layouts of a complex are saved as "<id>-1", "<id>-2", so match the prefix too.
+                    // Layouts of a complex are saved as "<id>-1", "<id>-2" (and combined "+" courses), so compare club keys.
                     val alreadySaved = savedCourses.any {
-                        it.id == result.id || it.id.startsWith("${result.id}-") || it.golfCourseApiId == result.id
+                        CourseLayouts.complexKey(it.id) == CourseLayouts.complexKey(result.id) || it.golfCourseApiId == result.id
                     }
                     Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp), tonalElevation = 1.dp, shape = MaterialTheme.shapes.medium) {
                         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -678,17 +681,17 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
             }
 
             // Saved courses
-            item { SectionHeader(stringResource(R.string.courses_saved, savedCourses.size)) }
+            item { SectionHeader(stringResource(R.string.courses_saved, savedClubs.size)) }
             if (savedCourses.isEmpty()) {
                 item {
                     Text(stringResource(R.string.courses_no_courses), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
                 }
             }
-            items(savedCourses, key = { it.id }) { course ->
+            items(savedClubs, key = { it.key }) { club ->
                 val dismissState = rememberSwipeToDismissBoxState(
                     confirmValueChange = { value ->
                         if (value == SwipeToDismissBoxValue.EndToStart) {
-                            courseStore.delete(course.id)
+                            club.courses.forEach { courseStore.delete(it.id) }
                             savedCourses = courseStore.loadAll()
                             true
                         } else false
@@ -705,9 +708,9 @@ private fun CourseManagerScreen(onBack: () -> Unit) {
                 ) {
                     Surface(Modifier.fillMaxWidth(), tonalElevation = 1.dp, shape = MaterialTheme.shapes.medium) {
                         Column(Modifier.padding(16.dp)) {
-                            Text(course.name, style = MaterialTheme.typography.bodyMedium)
+                            Text(club.name, style = MaterialTheme.typography.bodyMedium)
                             Text(
-                                stringResource(R.string.courses_holes, course.holes.size),
+                                stringResource(R.string.courses_holes, club.holes),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -765,6 +768,19 @@ private data class SearchResult(
     /** OSM ID for a course from the static index; null for GolfCourseAPI results. */
     val osmKey: String? = null,
 )
+
+/** A saved club: every saved course (layouts and combined "+" courses) that shares a [CourseLayouts.complexKey]. */
+private data class SavedClub(val key: String, val name: String, val courses: List<Course>) {
+    /** Holes of the individual layouts; combined courses are skipped so holes are not counted twice. */
+    val holes: Int get() = courses.filter { !it.id.contains("+") }.sumOf { it.holes.size }
+    val downloadedAt: String get() = courses.maxOfOrNull { it.downloadedAt } ?: ""
+}
+
+private fun savedClubsOf(courses: List<Course>): List<SavedClub> =
+    courses.groupBy { CourseLayouts.complexKey(it.id) }.map { (key, members) ->
+        val layout = members.firstOrNull { !it.id.contains("+") } ?: members.first()
+        SavedClub(key, CourseLayouts.clubName(layout.name), members)
+    }
 
 // ─── My Clubs ───────────────────────────────────────────────────────
 
