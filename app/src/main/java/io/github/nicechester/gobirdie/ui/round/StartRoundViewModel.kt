@@ -81,6 +81,7 @@ class StartRoundViewModel @Inject constructor(
 
     private var playerLocation: GpsPoint? = null
     private var savedCourseIds = mutableSetOf<String>()
+    private var searchToken = 0
 
     // Course selected and ready to start
     private val _selectedCourse = MutableStateFlow<Pair<Course, Int>?>(null) // course + starting hole
@@ -101,8 +102,11 @@ class StartRoundViewModel @Inject constructor(
         // Re-sort existing saved courses by distance
         val current = _state.value
         if (current is StartRoundUiState.CourseList) {
-            val sorted = current.courses
+            val saved = courseStore.loadAll()
+            refreshSavedIds(saved)
+            val online = current.courses.filter { !it.isSaved }
                 .map { it.copy(distanceText = formatDistance(it.location, location)) }
+            val sorted = (savedClubRows(saved, location) + online)
                 .sortedBy { it.location.distanceMeters(location) }
             _state.value = StartRoundUiState.CourseList(sorted, isSearchingOnline = true)
         }
@@ -111,20 +115,37 @@ class StartRoundViewModel @Inject constructor(
 
     private fun showSavedCourses(location: GpsPoint?) {
         val saved = courseStore.loadAll()
-        savedCourseIds = saved.map { it.id }.toMutableSet()
-        val items = saved.take(20).map { c ->
-            CourseItem(
-                id = stableId(c.id), name = c.name, location = c.location, city = "",
-                isSaved = true,
-                distanceText = location?.let { formatDistance(c.location, it) },
-            )
-        }.let { list ->
-            if (location != null) list.sortedBy { it.location.distanceMeters(location) } else list
-        }
-        _state.value = StartRoundUiState.CourseList(items, isSearchingOnline = location != null)
+        refreshSavedIds(saved)
+        _state.value = StartRoundUiState.CourseList(savedClubRows(saved, location), isSearchingOnline = location != null)
     }
 
+    private fun refreshSavedIds(saved: List<Course>) {
+        savedCourseIds = saved.filter { !it.id.contains("+") }.map { CourseLayouts.complexKey(it.id) }.toMutableSet()
+    }
+
+    /** One row per club: layouts sharing a [CourseLayouts.complexKey] are grouped, nearest club first when [near] is known. */
+    private fun savedClubRows(saved: List<Course>, near: GpsPoint?): List<CourseItem> {
+        val groups = saved.filter { !it.id.contains("+") }
+            .groupBy { CourseLayouts.complexKey(it.id) }
+            .entries.toList()
+        val ordered = if (near != null) groups.sortedBy { it.value.first().location.distanceMeters(near) } else groups
+        return ordered.take(20).map { (key, members) ->
+            val first = members.first()
+            CourseItem(
+                id = stableId(key), name = CourseLayouts.clubName(first.name), location = first.location, city = "",
+                isSaved = true,
+                distanceText = near?.let { formatDistance(first.location, it) },
+                osmKey = if (key.startsWith("osm-")) key.removePrefix("osm-") else null,
+            )
+        }
+    }
+
+    /** Identity of a list row for de-duplication: its OSM or API club key, else its list id. */
+    private fun rowKey(item: CourseItem): String =
+        CourseLayouts.complexKey(item.osmKey?.let { "osm-$it" } ?: item.apiId?.let { "api-$it" } ?: "id-${item.id}")
+
     private fun searchNearby(location: GpsPoint) {
+        val token = ++searchToken
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val current = (_state.value as? StartRoundUiState.CourseList)?.courses ?: emptyList()
@@ -132,7 +153,10 @@ class StartRoundViewModel @Inject constructor(
                 val staticHits = osm.nearby(location, 15_000.0)
                 val newItems = if (staticHits.isNotEmpty()) {
                     staticHits
-                        .filter { e -> current.none { it.name == e.name } }
+                        .filter { e ->
+                            current.none { it.name == e.name } &&
+                                !savedCourseIds.contains(CourseLayouts.complexKey("osm-${e.osmId}"))
+                        }
                         .map { e ->
                             val point = GpsPoint(e.lat!!, e.lon!!)
                             CourseItem(
@@ -147,7 +171,10 @@ class StartRoundViewModel @Inject constructor(
                     var results = overpass.searchCourses(location, 15000)
                     if (results.isEmpty()) results = overpass.searchCourses(location, 30000)
                     results
-                        .filter { r -> current.none { it.name == r.name } }
+                        .filter { r ->
+                            current.none { it.name == r.name } &&
+                                !savedCourseIds.contains(CourseLayouts.complexKey("osm-${r.osmId}"))
+                        }
                         .map { r ->
                             CourseItem(
                                 id = -r.osmId.toInt(), name = r.name, location = r.location, city = "",
@@ -156,9 +183,12 @@ class StartRoundViewModel @Inject constructor(
                             )
                         }
                 }
-                val merged = (current + newItems).sortedBy { it.location.distanceMeters(location) }
+                if (token != searchToken) return@launch
+                val merged = (current + newItems).distinctBy { rowKey(it) }
+                    .sortedBy { it.location.distanceMeters(location) }
                 _state.value = StartRoundUiState.CourseList(merged, isSearchingOnline = false)
             } catch (e: Exception) {
+                if (token != searchToken) return@launch
                 // Never replace CourseList with Error — keep saved courses and the search bar,
                 // but flag the failure so the user sees it instead of an empty list.
                 val current = _state.value
@@ -174,9 +204,11 @@ class StartRoundViewModel @Inject constructor(
     fun searchByName() {
         val query = _searchText.value.trim()
         if (query.isEmpty()) {
+            searchToken++
             playerLocation?.let { loadWithLocation(it) }
             return
         }
+        val token = ++searchToken
         _state.value = StartRoundUiState.CourseList(emptyList(), isSearchingOnline = true)
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -196,11 +228,12 @@ class StartRoundViewModel @Inject constructor(
                         CourseItem(
                             id = -((e.osmId.hashCode() and 0x7fffffff).coerceAtLeast(1)),
                             name = e.name, location = point, city = e.city,
-                            isSaved = false,
+                            isSaved = savedCourseIds.contains(CourseLayouts.complexKey("osm-${e.osmId}")),
                             distanceText = formatDistance(point, loc),
                             osmKey = e.osmId,
                         )
                     }
+                    if (token != searchToken) return@launch
                     _state.value = StartRoundUiState.CourseList(items, isSearchingOnline = false)
                     return@launch
                 }
@@ -209,13 +242,15 @@ class StartRoundViewModel @Inject constructor(
                 val items = results.map { r ->
                     CourseItem(
                         id = apiItemId(r.id), name = r.name, location = r.location, city = r.city,
-                        isSaved = false,
+                        isSaved = savedCourseIds.contains(CourseLayouts.complexKey("api-${r.id}")),
                         distanceText = playerLocation?.let { formatDistance(r.location, it) },
                         apiId = r.id,
                     )
                 }
+                if (token != searchToken) return@launch
                 _state.value = StartRoundUiState.CourseList(items, isSearchingOnline = false)
             } catch (e: Exception) {
+                if (token != searchToken) return@launch
                 _state.value = StartRoundUiState.CourseList(emptyList(), isSearchingOnline = false)
             }
         }
