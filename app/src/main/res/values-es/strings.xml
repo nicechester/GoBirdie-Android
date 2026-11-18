@@ -308,4 +308,9 @@
     <string name="ai_prompt_instructions">Pega el prompt en ChatGPT o Gemini para recibir feedback de coaching personalizado.</string>
     <string name="ai_open_chatgpt">Abrir ChatGPT</string>
     <string name="ai_open_gemini">Abrir Gemini</string>
+    <string name="layout_pick_prompt">Elige un recorrido para 9 hoyos, o dos para 18 hoyos</string>
+    <string name="layout_holes">%d hoyos</string>
+    <string name="layout_start_9">Empezar 9 hoyos</string>
+    <string name="layout_start_18">Empezar 18 hoyos</string>
+    <string name="layout_choose">Elige un recorrido</string>
 </resources>

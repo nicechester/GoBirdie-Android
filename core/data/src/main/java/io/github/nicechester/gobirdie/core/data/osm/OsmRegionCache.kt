@@ -17,6 +17,7 @@ import java.io.IOException
 import java.io.InputStreamReader
 import java.time.Instant
 import java.util.zip.GZIPInputStream
+import kotlin.math.hypot
 
 /**
  * One gzipped region file (GeoJSON) on disk, replaced when the user moves to another region.
@@ -105,7 +106,11 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         val minLon = outlinePoints.minOf { it.lon } - MARGIN
         val maxLon = outlinePoints.maxOf { it.lon } + MARGIN
 
-        val holeLines = mutableListOf<Feature>()
+        fun inBox(p: GpsPoint) = p.lat in minLat..maxLat && p.lon in minLon..maxLon
+
+        // The requested outline plus any other course outline near it, so each hole can be matched to its own outline.
+        val courseOutlines = mutableListOf(CourseOutline(osmId, outlineRings))
+        val candidateHoles = mutableListOf<Feature>()
         val greens = mutableListOf<Polygon>()
         val fairways = mutableListOf<Polygon>()
         val bunkers = mutableListOf<Polygon>()
@@ -113,14 +118,25 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         val pass2 = System.currentTimeMillis()
         forEachFeature(gz) { feature ->
             val props = propertiesOf(feature)
+            if (props["leisure"] == "golf_course") {
+                // Only areas count as outlines, as in fetch_course.sh. A LineString trace of the club boundary
+                // (same name, no polygon) would otherwise claim the holes inside it.
+                val id = feature["id"] as? String ?: ""
+                val type = (feature["geometry"] as? Map<*, *>)?.get("type")
+                val rings = geometryOf(feature).filter { it.size >= 3 }
+                if ((type == "Polygon" || type == "MultiPolygon") && id != osmId && rings.any { ring -> ring.any { inBox(it) } }) {
+                    courseOutlines += CourseOutline(id, rings)
+                }
+                return@forEachFeature true
+            }
             val golf = props["golf"] as? String
             if (golf != null && golf in GOLF_KINDS) {
                 val parts = geometryOf(feature)
-                val first = parts.firstOrNull()?.firstOrNull()
-                if (first != null && first.lat in minLat..maxLat && first.lon in minLon..maxLon) {
+                // Same as the script's in_bounds: any coordinate of the feature in the box, not just its start.
+                if (parts.any { ring -> ring.any { inBox(it) } }) {
                     val id = feature["id"] as? String ?: ""
                     when (golf) {
-                        "hole" -> if (parts.isNotEmpty() && parts[0].size >= 2) holeLines.add(Feature(id, props, parts[0]))
+                        "hole" -> if (parts.isNotEmpty() && parts[0].size >= 2) candidateHoles.add(Feature(id, props, parts[0]))
                         "green" -> greens.addAll(parts.filter { it.size >= 3 })
                         "fairway" -> fairways.addAll(parts.filter { it.size >= 3 })
                         "bunker" -> bunkers.addAll(parts.filter { it.size >= 3 })
@@ -131,17 +147,25 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         }
 
         Log.d(TAG, "OSM region: pass 2 ${System.currentTimeMillis() - pass2}ms near outline: " +
-            "${holeLines.size} hole lines, ${greens.size} greens, ${fairways.size} fairways, ${bunkers.size} bunkers")
+            "${candidateHoles.size} hole lines, ${greens.size} greens, ${fairways.size} fairways, ${bunkers.size} bunkers")
 
-        // Layouts of a complex. Preferred: the golf:course:name tag on each hole (e.g. "C.W. Koiner Course").
-        // Fallback: one layout per duplicate hole ref, split by way-ID gap.
+        // Keep only the holes whose tee belongs to this outline (see owningOutlineId).
+        val holeLines = candidateHoles.filter { owningOutlineId(it.points.first(), courseOutlines) == osmId }
+
+        // Layouts of a complex, in order of preference:
+        // 1. The golf:course:name tag on each hole (e.g. "C.W. Koiner Course").
+        // 2. The text before the number in each ref (e.g. "Creek 1", "Oaks 1"): one layout per prefix.
+        // 3. One layout per duplicate hole ref, split by way-ID gap.
         val tagged = holeLines.isNotEmpty() && holeLines.all { it.props["golf:course:name"] is String }
-        val layouts: List<Pair<String?, List<Feature>>> = if (tagged) {
-            holeLines.groupBy { it.props["golf:course:name"] as String }.map { (layoutName, lines) -> layoutName to lines }
-        } else {
-            val layoutCount = holeLines.mapNotNull { it.props["ref"]?.toString()?.toIntOrNull() }
-                .groupingBy { it }.eachCount().values.maxOrNull() ?: 1
-            splitByWayGap(holeLines, layoutCount).map { null to it }
+        val named = if (tagged) emptyList() else groupByRefPrefix(holeLines)
+        val layouts: List<Pair<String?, List<Feature>>> = when {
+            tagged -> holeLines.groupBy { it.props["golf:course:name"] as String }.map { (layoutName, lines) -> layoutName to lines }
+            named.size > 1 -> named
+            else -> {
+                val layoutCount = holeLines.mapNotNull { holeNumber(it.props["ref"]) }
+                    .groupingBy { it }.eachCount().values.maxOrNull() ?: 1
+                splitByWayGap(holeLines, layoutCount).map { null to it }
+            }
         }
         val courseName = outlineName ?: name
         val center = centroid(outlinePoints)
@@ -203,7 +227,7 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         // One line per hole number within a layout; keep the way whose tee is closest to the anchor.
         val byRef = LinkedHashMap<Int, Feature>()
         for (line in holeLines) {
-            val ref = line.props["ref"]?.toString()?.toIntOrNull() ?: continue
+            val ref = holeNumber(line.props["ref"]) ?: continue
             val existing = byRef[ref]
             if (existing != null &&
                 line.points.first().distanceMeters(anchor) >= existing.points.first().distanceMeters(anchor)
@@ -245,7 +269,55 @@ class OsmRegionCache(private val dir: File, private val http: OkHttpClient) {
         }.sortedBy { it.number }
     }
 
+    /** The hole number in a ref: 4 -> 4, "4" -> 4, "Creek 1" -> 1. */
+    private fun holeNumber(ref: Any?): Int? = when (ref) {
+        is Number -> ref.toInt()
+        is String -> ref.toIntOrNull() ?: Regex("""\d+$""").find(ref)?.value?.toIntOrNull()
+        else -> null
+    }
+
+    /** The text before the hole number in a ref: "Creek 1" -> "Creek", "4" -> "". */
+    private fun refPrefix(ref: Any?): String =
+        (ref as? String)?.replace(Regex("""\s*\d+$"""), "")?.trim().orEmpty()
+
+    /** Groups holes by the prefix of their ref. Holes without a prefix are left out. */
+    private fun groupByRefPrefix(lines: List<Feature>): List<Pair<String?, List<Feature>>> =
+        lines.filter { refPrefix(it.props["ref"]).isNotEmpty() }
+            .groupBy { refPrefix(it.props["ref"]) }
+            .map { (prefix, group) -> prefix to group }
+
+    /**
+     * The outline a hole belongs to: the outline whose polygon contains the tee, otherwise the nearest outline centroid.
+     * Matches fetch_course.sh: the nearest centroid is measured in degrees (lon, lat), not meters.
+     */
+    private fun owningOutlineId(point: GpsPoint, outlines: List<CourseOutline>): String? {
+        outlines.firstOrNull { outline -> outline.rings.any { pointInPolygon(point, it) } }?.let { return it.id }
+        return outlines.minByOrNull { degreeDistance(centroid(it.rings.flatten()), point) }?.id
+    }
+
+    private fun degreeDistance(a: GpsPoint, b: GpsPoint): Double = hypot(a.lon - b.lon, a.lat - b.lat)
+
+    /** Ray casting over one ring. Points are treated as (lat, lon) pairs. */
+    private fun pointInPolygon(point: GpsPoint, ring: List<GpsPoint>): Boolean {
+        var inside = false
+        var j = ring.size - 1
+        for (i in ring.indices) {
+            val a = ring[i]
+            val b = ring[j]
+            if ((a.lat > point.lat) != (b.lat > point.lat) &&
+                point.lon < (b.lon - a.lon) * (point.lat - a.lat) / (b.lat - a.lat) + a.lon
+            ) {
+                inside = !inside
+            }
+            j = i
+        }
+        return inside
+    }
+
     // MARK: - Streaming read
+
+    /** A course outline (leisure=golf_course, area only) near the requested one. Outer rings only. */
+    private class CourseOutline(val id: String, val rings: List<List<GpsPoint>>)
 
     private class Feature(val id: String, val props: Map<String, Any?>, val points: List<GpsPoint>)
 
