@@ -11,7 +11,12 @@ const val SYNC_PORT = 7743
 
 class SyncServer(private val roundStore: RoundStore) : NanoHTTPD(SYNC_PORT) {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    // encodeDefaults = true so default-valued fields (strokes, putts, shots, source, ...)
+    // are always written; the desktop wire format requires them.
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
